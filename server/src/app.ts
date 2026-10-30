@@ -8,7 +8,6 @@ import env from "./config/env.js";
 import { apiLimiter } from "./middleware/rateLimiters.js";
 import notFound from "./middleware/notFound.js";
 import errorHandler from "./middleware/errorHandler.js";
-
 import authRoutes from "./modules/auth/auth.routes.js";
 import {
   categoryAdminRoutes,
@@ -18,6 +17,7 @@ import {
   productAdminRoutes,
   productPublicRoutes,
 } from "./modules/products/product.routes.js";
+import { inventoryAdminRoutes } from "./modules/inventory/inventory.routes.js";
 
 const app: Express = express();
 
@@ -57,8 +57,7 @@ app.use("/api/categories", categoryPublicRoutes);
 app.use("/api/admin/categories", categoryAdminRoutes);
 app.use("/api/products", productPublicRoutes);
 app.use("/api/admin/products", productAdminRoutes);
-app.use("/api/admin/products", productAdminRoutes);
-
+app.use("/api/admin/inventory", inventoryAdminRoutes);
 // 4. Error handling (must be last)
 app.use(notFound);
 app.use(errorHandler);

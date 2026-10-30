@@ -35,7 +35,6 @@ export const STOCK_MOVEMENT_TYPES = [
   'return_written_off',
 ] as const;
 export type StockMovementType = (typeof STOCK_MOVEMENT_TYPES)[number];
-
 // ── Customers ─────────────────────────────────────────
 export const VERIFIED_VIA = ['confirmation_call'] as const;
 export type VerifiedVia = (typeof VERIFIED_VIA)[number];
@@ -156,3 +155,5 @@ export type DiscountType = (typeof DISCOUNT_TYPES)[number];
 
 export const PROMOTION_STATUSES = ['active', 'paused', 'ended'] as const;
 export type PromotionStatus = (typeof PROMOTION_STATUSES)[number];
+
+

@@ -3,6 +3,8 @@ import { requireAdmin } from '../../middleware/requireAdmin.js';
 import { validateBody } from '../../middleware/validate.js';
 import * as productController from './product.controller.js';
 import * as variantController from './variant.controller.js';
+import * as publicController from './product.public.controller.js';
+import { batchRoutes } from '../inventory/inventory.routes.js';
 import {
   changeProductStatusSchema,
   createProductSchema,
@@ -13,13 +15,14 @@ import {
   createVariantSchema,
   updateVariantSchema,
 } from './variant.validation.js';
-import * as publicController from './product.public.controller.js';
+
 // Public: /api/products
 export const productPublicRoutes = Router();
 
 productPublicRoutes.get('/', publicController.list);
 productPublicRoutes.get('/filters', publicController.filters);
 productPublicRoutes.get('/:slug', publicController.getBySlug);
+
 // Admin: /api/admin/products (every route needs a logged-in admin)
 export const productAdminRoutes = Router();
 
@@ -53,3 +56,6 @@ productAdminRoutes.patch(
   validateBody(changeVariantStatusSchema),
   variantController.changeStatus
 );
+
+// Batches (stock) of one size
+productAdminRoutes.use('/:productId/variants/:variantId/batches', batchRoutes);

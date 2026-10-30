@@ -9,7 +9,7 @@ import type { CreateVariantInput, UpdateVariantInput } from './variant.validatio
 
 // ── Helpers ───────────────────────────────────────────
 
-async function findVariantOrThrow(productId: string, variantId: string): Promise<VariantDocument> {
+export async function findVariantOrThrow(productId: string, variantId: string): Promise<VariantDocument> {
   if (!isValidObjectId(productId) || !isValidObjectId(variantId)) {
     throw new AppError('Size not found', 404);
   }

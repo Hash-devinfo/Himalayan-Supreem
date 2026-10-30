@@ -1,4 +1,4 @@
-import mongoose, { isValidObjectId, type Types } from 'mongoose';
+import mongoose, { isValidObjectId, type ClientSession, type Types } from 'mongoose';
 import Product, { type ProductDocument } from '../../models/Product.js';
 import Variant, { type VariantDocument } from '../../models/Variant.js';
 import Category from '../../models/Category.js';
@@ -12,6 +12,8 @@ import type {
   ListProductsAdminQuery,
   UpdateProductInput,
 } from './product.validation.js';
+import Batch from '../../models/Batch.js';
+import { formatPktDate } from '../../utils/dates.js';
 
 export interface PaginatedResult<T> {
   items: T[];
@@ -20,6 +22,8 @@ export interface PaginatedResult<T> {
   total: number;
   totalPages: number;
 }
+
+
 
 // ── Helpers ───────────────────────────────────────────
 
@@ -77,14 +81,22 @@ async function assertCanPublish(product: ProductDocument): Promise<void> {
   }
 }
 
+
 // Recalculates the cached minPrice, maxPrice and inStock from the product's active variants.
-export async function refreshProductSummary(productId: Types.ObjectId | string): Promise<void> {
-  const variants = await Variant.find({ product: productId, status: 'active' }).select('price availableQty');
+// Pass the session when called inside a transaction.
+export async function refreshProductSummary(
+  productId: Types.ObjectId | string,
+  session?: ClientSession
+): Promise<void> {
+  const variants = await Variant.find({ product: productId, status: 'active' })
+    .select('price availableQty')
+    .session(session ?? null);
 
   if (variants.length === 0) {
     await Product.updateOne(
       { _id: productId },
-      { $set: { inStock: false }, $unset: { minPrice: 1, maxPrice: 1 } }
+      { $set: { inStock: false }, $unset: { minPrice: 1, maxPrice: 1 } },
+      { session }
     );
     return;
   }
@@ -98,7 +110,8 @@ export async function refreshProductSummary(productId: Types.ObjectId | string):
         maxPrice: Math.max(...prices),
         inStock: variants.some((variant) => variant.availableQty > 0),
       },
-    }
+    },
+    { session }
   );
 }
 
