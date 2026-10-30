@@ -6,6 +6,7 @@ import { slugify } from '../../utils/slugify.js';
 import { diffChanges } from '../../utils/diffChanges.js';
 import { recordAudit, type ActorContext } from '../audit/audit.service.js';
 import type { CreateCategoryInput, UpdateCategoryInput } from './category.validation.js';
+import Product from '../../models/Product.js';
 
 const PUBLIC_FIELDS = 'name slug description image sortOrder';
 
@@ -134,6 +135,15 @@ export async function changeCategoryStatus(
 
   if (category.status === status) {
     return category;
+  }
+   if (status !== 'active') {
+    const publishedCount = await Product.countDocuments({ category: category._id, status: 'published' });
+    if (publishedCount > 0) {
+      throw new AppError(
+        `"${category.name}" has ${publishedCount} published product(s). Unpublish them or move them to another category first.`,
+        400
+      );
+    }
   }
 
   const previousStatus = category.status;

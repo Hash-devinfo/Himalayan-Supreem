@@ -6,6 +6,18 @@ export interface Changes {
   hasChanges: boolean;
 }
 
+// Simple values (text, numbers) are compared directly.
+// Lists, sub-objects and IDs are compared by their JSON form, so
+// ['a', 'b'] equals ['a', 'b'] and an ObjectId equals its text form.
+function isSameValue(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  if (a === null || b === null || a === undefined || b === undefined) return false;
+  if (typeof a === 'object' || typeof b === 'object') {
+    return JSON.stringify(a) === JSON.stringify(b);
+  }
+  return false;
+}
+
 export function diffChanges(current: object, updates: object): Changes {
   const currentValues = current as Record<string, unknown>;
   const before: Record<string, unknown> = {};
@@ -13,7 +25,7 @@ export function diffChanges(current: object, updates: object): Changes {
 
   for (const [key, newValue] of Object.entries(updates)) {
     if (newValue === undefined) continue;
-    if (currentValues[key] !== newValue) {
+    if (!isSameValue(currentValues[key], newValue)) {
       before[key] = currentValues[key] ?? null;
       after[key] = newValue;
     }
