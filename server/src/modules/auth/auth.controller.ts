@@ -16,3 +16,6 @@ export function logout(_req: Request, res: Response): void {
   res.clearCookie(ADMIN_COOKIE_NAME, logoutCookieOptions());
   res.json({ success: true, message: 'Logged out' });
 }
+export function me(req: Request, res: Response): void {
+  res.json({ success: true, admin: req.admin });
+}

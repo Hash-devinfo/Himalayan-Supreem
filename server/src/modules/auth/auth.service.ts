@@ -1,5 +1,5 @@
 import bcrypt from 'bcryptjs';
-import jwt, { type SignOptions } from 'jsonwebtoken';
+import jwt, { type JwtPayload, type SignOptions } from 'jsonwebtoken';
 import env from '../../config/env.js';
 import Admin, { type AdminDocument } from '../../models/Admin.js';
 import AppError from '../../utils/AppError.js';
@@ -60,4 +60,33 @@ export async function login(email: string, password: string): Promise<LoginResul
   const expiresAt = new Date(decoded.exp * 1000);
 
   return { admin, token, expiresAt };
+}
+
+const NOT_LOGGED_IN = 'Please log in to continue';
+
+export async function getAdminFromToken(token: string): Promise<AdminDocument> {
+  let payload: JwtPayload;
+  try {
+    payload = jwt.verify(token, env.jwtSecret, { algorithms: ['HS256'] }) as JwtPayload;
+  } catch {
+    throw new AppError('Your session has expired or is invalid. Please log in again', 401);
+  }
+
+  if (typeof payload.sub !== 'string') {
+    throw new AppError(NOT_LOGGED_IN, 401);
+  }
+
+  const admin = await Admin.findById(payload.sub);
+  if (!admin || !admin.isActive) {
+    throw new AppError(NOT_LOGGED_IN, 401);
+  }
+
+  if (admin.passwordChangedAt && payload.iat !== undefined) {
+    const changedAtSeconds = Math.floor(admin.passwordChangedAt.getTime() / 1000);
+    if (changedAtSeconds > payload.iat) {
+      throw new AppError('Your password was changed. Please log in again', 401);
+    }
+  }
+
+  return admin;
 }
