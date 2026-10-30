@@ -3,10 +3,12 @@ import jwt, { type JwtPayload, type SignOptions } from 'jsonwebtoken';
 import env from '../../config/env.js';
 import Admin, { type AdminDocument } from '../../models/Admin.js';
 import AppError from '../../utils/AppError.js';
+import { recordAudit } from '../audit/audit.service.js';
 
 const MAX_FAILED_ATTEMPTS = 5;
 const LOCK_MINUTES = 15;
 const INVALID_LOGIN = 'Invalid email or password';
+const NOT_LOGGED_IN = 'Please log in to continue';
 
 // Used when the email doesn't exist, so a wrong email takes as long as a wrong password.
 const DUMMY_HASH = bcrypt.hashSync('dummy-password-for-equal-timing', 12);
@@ -17,11 +19,17 @@ export interface LoginResult {
   expiresAt: Date;
 }
 
-export async function login(email: string, password: string): Promise<LoginResult> {
+export async function login(email: string, password: string, ip?: string): Promise<LoginResult> {
   const admin = await Admin.findOne({ email }).select('+passwordHash');
 
   if (!admin || !admin.isActive) {
     await bcrypt.compare(password, DUMMY_HASH);
+    await recordAudit({
+      action: 'admin.login_failed',
+      entityType: 'Admin',
+      after: { email, reason: admin ? 'inactive' : 'unknown_email' },
+      ip,
+    });
     throw new AppError(INVALID_LOGIN, 401);
   }
 
@@ -37,11 +45,36 @@ export async function login(email: string, password: string): Promise<LoginResul
 
   if (!passwordMatches) {
     admin.failedLoginCount += 1;
+    const failedCount = admin.failedLoginCount;
+    let locked = false;
+
     if (admin.failedLoginCount >= MAX_FAILED_ATTEMPTS) {
       admin.lockUntil = new Date(Date.now() + LOCK_MINUTES * 60_000);
       admin.failedLoginCount = 0;
+      locked = true;
     }
     await admin.save();
+
+    await recordAudit({
+      admin: admin.id,
+      action: 'admin.login_failed',
+      entityType: 'Admin',
+      entityId: admin.id,
+      after: { reason: 'wrong_password', failedCount },
+      ip,
+    });
+
+    if (locked) {
+      await recordAudit({
+        admin: admin.id,
+        action: 'admin.locked',
+        entityType: 'Admin',
+        entityId: admin.id,
+        after: { lockUntil: admin.lockUntil },
+        ip,
+      });
+    }
+
     throw new AppError(INVALID_LOGIN, 401);
   }
 
@@ -49,6 +82,14 @@ export async function login(email: string, password: string): Promise<LoginResul
   admin.lockUntil = undefined;
   admin.lastLoginAt = new Date();
   await admin.save();
+
+  await recordAudit({
+    admin: admin.id,
+    action: 'admin.login',
+    entityType: 'Admin',
+    entityId: admin.id,
+    ip,
+  });
 
   const token = jwt.sign({ role: admin.role }, env.jwtSecret, {
     subject: admin.id,
@@ -61,8 +102,6 @@ export async function login(email: string, password: string): Promise<LoginResul
 
   return { admin, token, expiresAt };
 }
-
-const NOT_LOGGED_IN = 'Please log in to continue';
 
 export async function getAdminFromToken(token: string): Promise<AdminDocument> {
   let payload: JwtPayload;
@@ -89,4 +128,21 @@ export async function getAdminFromToken(token: string): Promise<AdminDocument> {
   }
 
   return admin;
+}
+
+export async function logout(token: string | undefined, ip?: string): Promise<void> {
+  if (!token) return;
+
+  try {
+    const admin = await getAdminFromToken(token);
+    await recordAudit({
+      admin: admin.id,
+      action: 'admin.logout',
+      entityType: 'Admin',
+      entityId: admin.id,
+      ip,
+    });
+  } catch {
+    // Token already invalid or expired: nothing to record, the cookie is cleared anyway.
+  }
 }
