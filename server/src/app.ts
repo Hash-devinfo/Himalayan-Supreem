@@ -8,6 +8,7 @@ import env from './config/env.js';
 import { apiLimiter } from './middleware/rateLimiters.js';
 import notFound from './middleware/notFound.js';
 import errorHandler from './middleware/errorHandler.js';
+import authRoutes from './modules/auth/auth.routes.js';
 
 const app: Express = express();
 
@@ -41,6 +42,9 @@ app.get('/api/health', (_req: Request, res: Response) => {
     timestamp: new Date().toISOString(),
   });
 });
+
+
+app.use('/api/admin/auth', authRoutes);
 
 // 4. Error handling (must be last)
 app.use(notFound);
