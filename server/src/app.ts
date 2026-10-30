@@ -2,22 +2,35 @@ import express, { type Express, type Request, type Response } from 'express';
 import mongoose from 'mongoose';
 import helmet from 'helmet';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import morgan from 'morgan';
 import env from './config/env.js';
+import { apiLimiter } from './middleware/rateLimiters.js';
 import notFound from './middleware/notFound.js';
 import errorHandler from './middleware/errorHandler.js';
-import AppError from './utils/AppError.js';
 
 const app: Express = express();
 
+// 0. Server settings
+if (env.isProduction) {
+  app.set('trust proxy', 1);
+}
+app.disable('x-powered-by');
+
+// 1. Security and parsing (run on every request)
 app.use(helmet());
 app.use(cors({ origin: env.clientUrls, credentials: true }));
 app.use(express.json({ limit: '100kb' }));
+app.use(cookieParser());
 
 if (!env.isProduction) {
   app.use(morgan('dev'));
 }
 
+// 2. Rate limit for all API routes
+app.use('/api', apiLimiter);
+
+// 3. Routes
 app.get('/api/health', (_req: Request, res: Response) => {
   const dbConnected = mongoose.connection.readyState === 1;
 
@@ -28,26 +41,8 @@ app.get('/api/health', (_req: Request, res: Response) => {
     timestamp: new Date().toISOString(),
   });
 });
-// ⚠️ TEMPORARY test routes, delete after testing
-app.get('/api/test/app-error', () => {
-  throw new AppError('Product not found', 404);
-});
 
-app.get('/api/test/form-error', () => {
-  throw new AppError('Please check your details', 400, [
-    { field: 'phone', message: 'Enter a valid Pakistani mobile number' },
-  ]);
-});
-
-app.get('/api/test/bug', () => {
-  throw new Error('Secret internal detail: db password is abc123');
-});
-
-app.get('/api/test/async-bug', async () => {
-  await new Promise((resolve) => setTimeout(resolve, 100));
-  throw new Error('Async failure');
-});
-
+// 4. Error handling (must be last)
 app.use(notFound);
 app.use(errorHandler);
 
