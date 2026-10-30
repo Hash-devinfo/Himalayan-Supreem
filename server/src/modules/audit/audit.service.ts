@@ -18,3 +18,8 @@ export async function recordAudit(entry: AuditEntry): Promise<void> {
     console.error('Failed to write audit log:', entry.action, error);
   } 
 }
+
+export interface ActorContext {
+  adminId: string;
+  ip?: string;
+}
