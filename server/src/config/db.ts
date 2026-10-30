@@ -18,3 +18,9 @@ export async function connectDB(): Promise<void> {
   mongoose.connection.on('disconnected', () => console.warn('MongoDB disconnected'));
   mongoose.connection.on('reconnected', () => console.log('MongoDB reconnected'));
 }
+
+
+export async function disconnectDB(): Promise<void> {
+  await mongoose.connection.close();
+  console.log('MongoDB connection closed');
+}
