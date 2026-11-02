@@ -19,6 +19,8 @@ import {
 } from "./modules/products/product.routes.js";
 import { inventoryAdminRoutes } from "./modules/inventory/inventory.routes.js";
 import { settingsAdminRoutes } from './modules/settings/settings.routes.js';
+import { deliveryAdminRoutes } from './modules/delivery/delivery.routes.js';
+
 
 const app: Express = express();
 
@@ -60,6 +62,7 @@ app.use("/api/products", productPublicRoutes);
 app.use("/api/admin/products", productAdminRoutes);
 app.use("/api/admin/inventory", inventoryAdminRoutes);
 app.use('/api/admin/settings', settingsAdminRoutes);
+app.use('/api/admin/delivery', deliveryAdminRoutes);
 // 4. Error handling (must be last)
 app.use(notFound);
 app.use(errorHandler);

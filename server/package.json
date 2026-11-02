@@ -8,7 +8,8 @@
     "typecheck": "tsc --noEmit",
     "build": "rm -rf dist && tsc",
     "start": "node dist/server.js",
-    "create-admin": "tsx src/scripts/createAdmin.ts"
+    "create-admin": "tsx src/scripts/createAdmin.ts",
+    "seed:cities": "tsx src/scripts/seedCities.ts"
   },
   "keywords": [],
   "author": "",
