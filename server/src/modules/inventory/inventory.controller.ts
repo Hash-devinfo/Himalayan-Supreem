@@ -10,6 +10,9 @@ import {
   type ReceiveBatchInput,
   type UpdateBatchInput,
 } from './inventory.validation.js';
+import { runDailyInventoryCheckOnce } from '../../jobs/scheduler.js';
+import { recordAudit } from '../audit/audit.service.js';
+import AppError from '../../utils/AppError.js';
 
 type VariantParams = { productId: string; variantId: string };
 type BatchParams = VariantParams & { batchId: string };
@@ -61,4 +64,17 @@ export async function expiryAlerts(req: Request, res: Response): Promise<void> {
 export async function lowStockAlerts(_req: Request, res: Response): Promise<void> {
   const items = await inventoryService.getLowStockAlerts();
   res.json({ success: true, items });
+}
+
+
+// ── Run the daily check now (instead of waiting for 00:05) ──
+
+export async function runDailyCheck(req: Request, res: Response): Promise<void> {
+  const actor = actorFrom(req);
+  const summary = await runDailyInventoryCheckOnce('admin');
+  if (!summary) {
+    throw new AppError('The daily inventory check is already running. Try again in a minute.', 409);
+  }
+  await recordAudit({ admin: actor.adminId, action: 'job.run_manually', entityType: 'Job', after: { job: 'daily-inventory' }, ip: actor.ip });
+  res.json({ success: true, summary });
 }

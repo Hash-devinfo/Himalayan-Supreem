@@ -22,3 +22,4 @@ inventoryAdminRoutes.use(requireAdmin);
 inventoryAdminRoutes.get('/movements', inventoryController.listMovements);
 inventoryAdminRoutes.get('/alerts/expiry', inventoryController.expiryAlerts);
 inventoryAdminRoutes.get('/alerts/low-stock', inventoryController.lowStockAlerts);
+inventoryAdminRoutes.post('/jobs/daily-check', inventoryController.runDailyCheck);

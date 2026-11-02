@@ -1,11 +1,13 @@
 import env from './config/env.js';
 import { connectDB, disconnectDB } from './config/db.js';
 import app from './app.js';
+import { startScheduler, stopScheduler } from './jobs/scheduler.js';
 
 await connectDB();
 
 const server = app.listen(env.port, () => {
   console.log(`Server running in ${env.nodeEnv} mode on http://localhost:${env.port}`);
+  startScheduler();
 });
 
 let shuttingDown = false;
@@ -14,7 +16,8 @@ function shutdown(signal: string): void {
   if (shuttingDown) return;
   shuttingDown = true;
   console.log(`${signal} received, shutting down gracefully...`);
-
+console.log(`${signal} received, shutting down gracefully...`);
+  stopScheduler()
   server.close(() => {
     disconnectDB()
       .then(() => {
