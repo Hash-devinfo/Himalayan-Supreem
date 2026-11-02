@@ -10,7 +10,10 @@ import {
   type CreateZoneInput,
   type UpdateCityInput,
   type UpdateZoneInput,
-} from './delivery.validation.js';
+    type QuoteInput,
+}  from './delivery.validation.js';
+import * as quoteService from './quote.service.js';
+
 
 type IdParams = { id: string };
 
@@ -57,4 +60,20 @@ export async function updateCity(req: Request<IdParams>, res: Response): Promise
 export async function assignZone(req: Request, res: Response): Promise<void> {
   const result = await cityService.assignZone(req.body as AssignZoneInput, actorFrom(req));
   res.json({ success: true, ...result });
+}
+
+
+
+// ── Public ────────────────────────────────────────────
+
+export async function publicCities(_req: Request, res: Response): Promise<void> {
+  const cities = await quoteService.listPublicCities();
+  // The list changes rarely: let browsers keep it for 10 minutes
+  res.set('Cache-Control', 'public, max-age=600');
+  res.json({ success: true, cities });
+}
+
+export async function quote(req: Request, res: Response): Promise<void> {
+  const result = await quoteService.quoteForItems(req.body as QuoteInput);
+  res.json({ success: true, quote: result });
 }

@@ -86,3 +86,31 @@ export type CreateCityInput = z.infer<typeof createCitySchema>;
 export type UpdateCityInput = z.infer<typeof updateCitySchema>;
 export type AssignZoneInput = z.infer<typeof assignZoneSchema>;
 export type ListCitiesQuery = z.infer<typeof listCitiesQuerySchema>;
+
+
+
+// ── Public: delivery quote ────────────────────────────
+
+// The customer either picks a city from the list (cityId),
+// or types one under "My city isn't listed" (cityName + province).
+export const quoteSchema = z
+  .strictObject({
+    cityId: objectId('City').optional(),
+    cityName: cityName.optional(),
+    province: province.optional(),
+    items: z
+      .array(
+        z.strictObject({
+          variantId: objectId('Product size'),
+          quantity: z.number('Quantity must be a number').int('Quantity must be a whole number').min(1, 'Quantity must be at least 1').max(50, 'At most 50 of one item'),
+        })
+      )
+      .min(1, 'Add at least one item')
+      .max(30, 'At most 30 different items'),
+  })
+  .refine((data) => Boolean(data.cityId) !== Boolean(data.cityName && data.province), {
+    message: 'Choose a city from the list, or type your city and choose its province',
+    path: ['cityId'],
+  });
+
+export type QuoteInput = z.infer<typeof quoteSchema>;
