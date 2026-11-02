@@ -1,23 +1,29 @@
-import mongoose, { isValidObjectId, type Types } from 'mongoose';
-import Batch, { type BatchDocument } from '../../models/Batch.js';
-import StockMovement from '../../models/StockMovement.js';
-import Variant from '../../models/Variant.js';
-import '../../models/Admin.js'; // registers the Admin model so stock history can show who made each change
-import { DEFAULT_LOW_STOCK_THRESHOLD } from '../../constants/inventory.js';
-import AppError from '../../utils/AppError.js';
-import { addDays, daysUntil, formatPktDate, startOfTodayPkt } from '../../utils/dates.js';
-import { diffChanges } from '../../utils/diffChanges.js';
-import { recordAudit, type ActorContext } from '../audit/audit.service.js';
-import { findVariantOrThrow } from '../products/variant.service.js';
-import type { PaginatedResult } from '../products/product.service.js';
-import { recalculateVariantStock, type StockLevel } from './stock.service.js';
+import mongoose, { isValidObjectId, type Types } from "mongoose";
+import Batch, { type BatchDocument } from "../../models/Batch.js";
+import StockMovement from "../../models/StockMovement.js";
+import Variant from "../../models/Variant.js";
+import "../../models/Admin.js"; // registers the Admin model so stock history can show who made each change
+import { DEFAULT_LOW_STOCK_THRESHOLD } from "../../constants/inventory.js";
+import AppError from "../../utils/AppError.js";
+import {
+  addDays,
+  daysUntil,
+  formatPktDate,
+  startOfTodayPkt,
+} from "../../utils/dates.js";
+import { diffChanges } from "../../utils/diffChanges.js";
+import { recordAudit, type ActorContext } from "../audit/audit.service.js";
+import { findVariantOrThrow } from "../products/variant.service.js";
+import type { PaginatedResult } from "../products/product.service.js";
+import { recalculateVariantStock, type StockLevel } from "./stock.service.js";
 import type {
   AdjustStockInput,
   ListBatchesQuery,
   MovementsQuery,
   ReceiveBatchInput,
   UpdateBatchInput,
-} from './inventory.validation.js';
+} from "./inventory.validation.js";
+import { isPastSellCutoff, stopSellingDate } from "./expiry.js";
 
 // ── Shapes returned to the admin panel ────────────────
 
@@ -29,6 +35,7 @@ export interface BatchView {
   receivedDate: string; // YYYY-MM-DD (Pakistan)
   expiryDate: string; // YYYY-MM-DD (Pakistan)
   daysToExpiry: number;
+  stopsSellingOn: string;
   isExpired: boolean;
   isSellable: boolean;
   status: string;
@@ -47,8 +54,12 @@ function toBatchView(batch: BatchDocument, now: Date = new Date()): BatchView {
     receivedDate: formatPktDate(batch.receivedDate),
     expiryDate: formatPktDate(batch.expiryDate),
     daysToExpiry: daysUntil(batch.expiryDate, now),
+    stopsSellingOn: formatPktDate(stopSellingDate(batch.expiryDate)),
     isExpired,
-    isSellable: batch.status === 'active' && batch.quantityRemaining > 0 && !isExpired,
+    isSellable:
+      batch.status === "active" &&
+      batch.quantityRemaining > 0 &&
+      !isPastSellCutoff(batch.expiryDate, now),
     status: batch.status,
     origin: batch.origin,
     unitCost: batch.unitCost,
@@ -58,13 +69,16 @@ function toBatchView(batch: BatchDocument, now: Date = new Date()): BatchView {
 
 // ── Helpers ───────────────────────────────────────────
 
-async function findBatchOrThrow(variantId: Types.ObjectId, batchId: string): Promise<BatchDocument> {
+async function findBatchOrThrow(
+  variantId: Types.ObjectId,
+  batchId: string,
+): Promise<BatchDocument> {
   if (!isValidObjectId(batchId)) {
-    throw new AppError('Batch not found', 404);
+    throw new AppError("Batch not found", 404);
   }
   const batch = await Batch.findOne({ _id: batchId, variant: variantId });
   if (!batch) {
-    throw new AppError('Batch not found', 404);
+    throw new AppError("Batch not found", 404);
   }
   return batch;
 }
@@ -72,11 +86,14 @@ async function findBatchOrThrow(variantId: Types.ObjectId, batchId: string): Pro
 async function assertBatchNumberAvailable(
   variantId: Types.ObjectId,
   batchNumber: string,
-  excludeId?: string
+  excludeId?: string,
 ): Promise<void> {
   const existing = await Batch.findOne({ variant: variantId, batchNumber });
   if (existing && existing.id !== excludeId) {
-    throw new AppError(`Batch "${batchNumber}" already exists for this size`, 409);
+    throw new AppError(
+      `Batch "${batchNumber}" already exists for this size`,
+      409,
+    );
   }
 }
 
@@ -85,8 +102,11 @@ async function assertBatchNumberAvailable(
 export async function listBatches(
   productId: string,
   variantId: string,
-  query: ListBatchesQuery
-): Promise<{ batches: BatchView[]; stock: { available: number; reserved: number } }> {
+  query: ListBatchesQuery,
+): Promise<{
+  batches: BatchView[];
+  stock: { available: number; reserved: number };
+}> {
   const variant = await findVariantOrThrow(productId, variantId);
 
   const filter: Record<string, unknown> = { variant: variant._id };
@@ -105,12 +125,12 @@ export async function receiveBatch(
   productId: string,
   variantId: string,
   input: ReceiveBatchInput,
-  actor: ActorContext
+  actor: ActorContext,
 ): Promise<{ batch: BatchView; stock: StockLevel }> {
   const variant = await findVariantOrThrow(productId, variantId);
 
-  if (variant.status === 'archived') {
-    throw new AppError('Cannot receive stock for an archived size', 400);
+  if (variant.status === "archived") {
+    throw new AppError("Cannot receive stock for an archived size", 400);
   }
 
   await assertBatchNumberAvailable(variant._id, input.batchNumber);
@@ -131,14 +151,14 @@ export async function receiveBatch(
           notes: input.notes,
         },
       ],
-      { session }
+      { session },
     );
-    if (!batch) throw new Error('Batch was not created');
+    if (!batch) throw new Error("Batch was not created");
 
     await StockMovement.create(
       [
         {
-          type: 'received',
+          type: "received",
           variant: variant._id,
           product: variant.product,
           batch: batch._id,
@@ -146,7 +166,7 @@ export async function receiveBatch(
           admin: actor.adminId,
         },
       ],
-      { session }
+      { session },
     );
 
     const stock = await recalculateVariantStock(variant._id, session);
@@ -154,8 +174,8 @@ export async function receiveBatch(
     await recordAudit(
       {
         admin: actor.adminId,
-        action: 'batch.receive',
-        entityType: 'Batch',
+        action: "batch.receive",
+        entityType: "Batch",
         entityId: batch.id,
         after: {
           sku: variant.sku,
@@ -165,7 +185,7 @@ export async function receiveBatch(
         },
         ip: actor.ip,
       },
-      session
+      session,
     );
 
     return { batch: toBatchView(batch), stock };
@@ -179,7 +199,7 @@ export async function updateBatch(
   variantId: string,
   batchId: string,
   input: UpdateBatchInput,
-  actor: ActorContext
+  actor: ActorContext,
 ): Promise<BatchView> {
   const variant = await findVariantOrThrow(productId, variantId);
   const batch = await findBatchOrThrow(variant._id, batchId);
@@ -190,12 +210,17 @@ export async function updateBatch(
   }
 
   if (after.batchNumber !== undefined) {
-    await assertBatchNumberAvailable(variant._id, input.batchNumber as string, batch.id);
+    await assertBatchNumberAvailable(
+      variant._id,
+      input.batchNumber as string,
+      batch.id,
+    );
   }
 
   // Show dates as calendar days in the audit record
   for (const record of [before, after]) {
-    if (record.expiryDate instanceof Date) record.expiryDate = formatPktDate(record.expiryDate);
+    if (record.expiryDate instanceof Date)
+      record.expiryDate = formatPktDate(record.expiryDate);
   }
 
   await mongoose.connection.transaction(async (session) => {
@@ -209,14 +234,14 @@ export async function updateBatch(
     await recordAudit(
       {
         admin: actor.adminId,
-        action: 'batch.update',
-        entityType: 'Batch',
+        action: "batch.update",
+        entityType: "Batch",
         entityId: batch.id,
         before,
         after,
         ip: actor.ip,
       },
-      session
+      session,
     );
   });
 
@@ -230,24 +255,26 @@ export async function adjustStock(
   variantId: string,
   batchId: string,
   input: AdjustStockInput,
-  actor: ActorContext
+  actor: ActorContext,
 ): Promise<{ batch: BatchView; stock: StockLevel }> {
   const variant = await findVariantOrThrow(productId, variantId);
   const existing = await findBatchOrThrow(variant._id, batchId);
 
-  if (existing.status === 'written_off') {
-    throw new AppError('This batch has been written off and can no longer be adjusted', 400);
-  }
-
-  const now = new Date();
-  if (input.type === 'expired' && existing.expiryDate > now) {
+  if (existing.status === "written_off") {
     throw new AppError(
-      `This batch expires on ${formatPktDate(existing.expiryDate)}. Use "damaged" or "adjusted_out" to remove stock before then.`,
-      400
+      "This batch has been written off and can no longer be adjusted",
+      400,
     );
   }
 
-  const isIncrease = input.type === 'adjusted_in';
+  const now = new Date();
+  if (input.type === "expired" && !isPastSellCutoff(existing.expiryDate)) {
+    throw new AppError(
+      `This batch is still on sale (it stops selling on ${formatPktDate(stopSellingDate(existing.expiryDate))}). Use "damaged" or "adjusted_out" to remove stock before then.`,
+      400,
+    );
+  }
+  const isIncrease = input.type === "adjusted_in";
 
   return mongoose.connection.transaction(async (session) => {
     // Change the quantity in one step, and only if enough is left.
@@ -259,22 +286,29 @@ export async function adjustStock(
 
     const batch = await Batch.findOneAndUpdate(
       condition,
-      { $inc: { quantityRemaining: isIncrease ? input.quantity : -input.quantity } },
-      { session, new: true }
+      {
+        $inc: {
+          quantityRemaining: isIncrease ? input.quantity : -input.quantity,
+        },
+      },
+      { session, new: true },
     );
 
     if (!batch) {
       throw new AppError(
         `Only ${existing.quantityRemaining} left in batch ${existing.batchNumber}`,
-        400
+        400,
       );
     }
 
     // Keep the batch status in step with what's left
     if (batch.quantityRemaining === 0) {
-      batch.status = input.type === 'damaged' || input.type === 'expired' ? 'written_off' : 'depleted';
-    } else if (batch.status === 'depleted') {
-      batch.status = 'active';
+      batch.status =
+        input.type === "damaged" || input.type === "expired"
+          ? "written_off"
+          : "depleted";
+    } else if (batch.status === "depleted") {
+      batch.status = "active";
     }
     await batch.save({ session });
 
@@ -290,7 +324,7 @@ export async function adjustStock(
           admin: actor.adminId,
         },
       ],
-      { session }
+      { session },
     );
 
     const stock = await recalculateVariantStock(variant._id, session);
@@ -298,8 +332,8 @@ export async function adjustStock(
     await recordAudit(
       {
         admin: actor.adminId,
-        action: 'stock.adjust',
-        entityType: 'Batch',
+        action: "stock.adjust",
+        entityType: "Batch",
         entityId: batch.id,
         before: { quantityRemaining: existing.quantityRemaining },
         after: {
@@ -310,7 +344,7 @@ export async function adjustStock(
         },
         ip: actor.ip,
       },
-      session
+      session,
     );
 
     return { batch: toBatchView(batch), stock };
@@ -319,7 +353,9 @@ export async function adjustStock(
 
 // ── Stock history ─────────────────────────────────────
 
-export async function listMovements(query: MovementsQuery): Promise<PaginatedResult<unknown>> {
+export async function listMovements(
+  query: MovementsQuery,
+): Promise<PaginatedResult<unknown>> {
   const { variant, batch, type, page, limit } = query;
 
   const filter: Record<string, unknown> = {};
@@ -329,10 +365,10 @@ export async function listMovements(query: MovementsQuery): Promise<PaginatedRes
 
   const [items, total] = await Promise.all([
     StockMovement.find(filter)
-      .populate('variant', 'sku label')
-      .populate('product', 'name')
-      .populate('batch', 'batchNumber')
-      .populate('admin', 'name')
+      .populate("variant", "sku label")
+      .populate("product", "name")
+      .populate("batch", "batchNumber")
+      .populate("admin", "name")
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(limit)
@@ -353,12 +389,15 @@ export interface ExpiryAlert {
   label: string;
   quantityRemaining: number;
   expiryDate: string;
+  stopsSellingOn: string;
   daysToExpiry: number;
 }
 
+// expiringSoon: still on sale, but expiring within the warning window (sell or discount these).
+// stoppedSelling: past the stop-selling date (or expired) but still on the shelf (write these off).
 export async function getExpiryAlerts(
   days: number
-): Promise<{ expiringSoon: ExpiryAlert[]; expiredWithStock: ExpiryAlert[] }> {
+): Promise<{ expiringSoon: ExpiryAlert[]; stoppedSelling: ExpiryAlert[] }> {
   const now = new Date();
   const until = addDays(startOfTodayPkt(now), days + 1);
 
@@ -382,14 +421,15 @@ export async function getExpiryAlerts(
       label: batch.variant?.label ?? '',
       quantityRemaining: batch.quantityRemaining,
       expiryDate: formatPktDate(batch.expiryDate),
+      stopsSellingOn: formatPktDate(stopSellingDate(batch.expiryDate)),
       daysToExpiry: daysUntil(batch.expiryDate, now),
     },
-    expired: batch.expiryDate <= now,
+    stopped: isPastSellCutoff(batch.expiryDate, now),
   }));
 
   return {
-    expiringSoon: alerts.filter((a) => !a.expired).map((a) => a.alert),
-    expiredWithStock: alerts.filter((a) => a.expired).map((a) => a.alert),
+    expiringSoon: alerts.filter((a) => !a.stopped).map((a) => a.alert),
+    stoppedSelling: alerts.filter((a) => a.stopped).map((a) => a.alert),
   };
 }
 
@@ -406,18 +446,25 @@ export interface LowStockAlert {
 
 export async function getLowStockAlerts(): Promise<LowStockAlert[]> {
   const filter: Record<string, unknown> = {
-    status: 'active',
+    status: "active",
     $expr: mongoose.trusted({
-      $lte: ['$availableQty', { $ifNull: ['$lowStockThreshold', DEFAULT_LOW_STOCK_THRESHOLD] }],
+      $lte: [
+        "$availableQty",
+        { $ifNull: ["$lowStockThreshold", DEFAULT_LOW_STOCK_THRESHOLD] },
+      ],
     }),
   };
 
   const variants = await Variant.find(filter)
-    .populate<{ product: { _id: Types.ObjectId; name: string; status: string } }>('product', 'name status')
+    .populate<{
+      product: { _id: Types.ObjectId; name: string; status: string };
+    }>("product", "name status")
     .sort({ availableQty: 1 });
 
   return variants
-    .filter((variant) => variant.product && variant.product.status !== 'archived')
+    .filter(
+      (variant) => variant.product && variant.product.status !== "archived",
+    )
     .map((variant) => ({
       variantId: variant.id,
       productId: variant.product._id.toString(),

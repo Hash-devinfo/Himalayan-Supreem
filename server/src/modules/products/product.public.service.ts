@@ -8,6 +8,8 @@ import type { PaginatedResult } from "./product.service.js";
 import type { ListProductsPublicQuery } from "./product.validation.js";
 import Batch from "../../models/Batch.js";
 import { formatPktDate } from "../../utils/dates.js";
+import { sellableExpiryCutoff } from '../inventory/expiry.js';
+
 // ── Public shapes: exactly what customers are allowed to see ──
 
 export interface PublicProductCard {
@@ -202,7 +204,7 @@ async function earliestSellableBatches(
     variant: mongoose.trusted({ $in: variantIds }),
     status: "active",
     quantityRemaining: mongoose.trusted({ $gt: 0 }),
-    expiryDate: mongoose.trusted({ $gt: new Date() }),
+    expiryDate: mongoose.trusted({ $gt: sellableExpiryCutoff() }),
   };
 
   const batches = await Batch.find(filter)

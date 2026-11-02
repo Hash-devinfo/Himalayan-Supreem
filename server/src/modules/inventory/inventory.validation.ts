@@ -1,21 +1,32 @@
-import { z } from 'zod';
-import { BATCH_STATUSES, STOCK_MOVEMENT_TYPES } from '../../constants/enums.js';
-import { objectId, optionalText, paginationQuery, pktDate, rupees } from '../../utils/zodHelpers.js';
-import { startOfTodayPkt } from '../../utils/dates.js';
+import { z } from "zod";
+import { BATCH_STATUSES, STOCK_MOVEMENT_TYPES } from "../../constants/enums.js";
+import {
+  objectId,
+  optionalText,
+  paginationQuery,
+  pktDate,
+  rupees,
+} from "../../utils/zodHelpers.js";
+import { startOfTodayPkt } from "../../utils/dates.js";
+import { STOP_SELLING_DAYS_BEFORE_EXPIRY } from "../../constants/inventory.js";
+import { sellableExpiryCutoff } from "./expiry.js";
 
 const batchNumber = z
   .string()
   .trim()
   .toUpperCase()
-  .min(1, 'Batch number is required')
-  .max(50, 'Batch number cannot be longer than 50 characters')
-  .regex(/^[A-Z0-9][A-Z0-9\-/.]*$/, 'Batch number can only contain letters, numbers, - / and .');
+  .min(1, "Batch number is required")
+  .max(50, "Batch number cannot be longer than 50 characters")
+  .regex(
+    /^[A-Z0-9][A-Z0-9\-/.]*$/,
+    "Batch number can only contain letters, numbers, - / and .",
+  );
 
 const quantity = z
-  .number('Quantity must be a number')
-  .int('Quantity must be a whole number')
-  .min(1, 'Quantity must be at least 1')
-  .max(100_000, 'Quantity is too large');
+  .number("Quantity must be a number")
+  .int("Quantity must be a whole number")
+  .min(1, "Quantity must be at least 1")
+  .max(100_000, "Quantity is too large");
 
 // ── Receive a new batch ───────────────────────────────
 
@@ -23,24 +34,27 @@ export const receiveBatchSchema = z
   .strictObject({
     batchNumber,
     quantity,
-    receivedDate: pktDate('Received date').optional(),
-    expiryDate: pktDate('Expiry date'),
-    origin: optionalText('Origin', 200).optional(),
-    unitCost: rupees('Unit cost').optional(),
-    notes: optionalText('Notes', 1000).optional(),
+    receivedDate: pktDate("Received date").optional(),
+    expiryDate: pktDate("Expiry date"),
+    origin: optionalText("Origin", 200).optional(),
+    unitCost: rupees("Unit cost").optional(),
+    notes: optionalText("Notes", 1000).optional(),
   })
-  .transform((data) => ({ ...data, receivedDate: data.receivedDate ?? startOfTodayPkt() }))
+  .transform((data) => ({
+    ...data,
+    receivedDate: data.receivedDate ?? startOfTodayPkt(),
+  }))
   .refine((data) => data.receivedDate <= startOfTodayPkt(), {
-    message: 'Received date cannot be in the future',
-    path: ['receivedDate'],
+    message: "Received date cannot be in the future",
+    path: ["receivedDate"],
   })
   .refine((data) => data.expiryDate > data.receivedDate, {
-    message: 'Expiry date must be after the received date',
-    path: ['expiryDate'],
+    message: "Expiry date must be after the received date",
+    path: ["expiryDate"],
   })
-  .refine((data) => data.expiryDate > startOfTodayPkt(), {
-    message: 'This batch has already expired and cannot be received for sale',
-    path: ['expiryDate'],
+  .refine((data) => data.expiryDate > sellableExpiryCutoff(), {
+    message: `This batch expires within ${STOP_SELLING_DAYS_BEFORE_EXPIRY} days, so it cannot be sold. Stock stops selling ${STOP_SELLING_DAYS_BEFORE_EXPIRY} days before expiry.`,
+    path: ["expiryDate"],
   });
 
 // ── Correct batch details (not quantities) ────────────
@@ -48,27 +62,35 @@ export const receiveBatchSchema = z
 export const updateBatchSchema = z
   .strictObject({
     batchNumber: batchNumber.optional(),
-    expiryDate: pktDate('Expiry date').optional(),
-    origin: optionalText('Origin', 200).optional(),
-    unitCost: rupees('Unit cost').optional(),
-    notes: optionalText('Notes', 1000).optional(),
+    expiryDate: pktDate("Expiry date").optional(),
+    origin: optionalText("Origin", 200).optional(),
+    unitCost: rupees("Unit cost").optional(),
+    notes: optionalText("Notes", 1000).optional(),
   })
   .refine((data) => Object.keys(data).length > 0, {
-    message: 'Provide at least one field to update',
+    message: "Provide at least one field to update",
   });
 
 // ── Adjust stock in a batch ───────────────────────────
 
-export const ADJUSTMENT_TYPES = ['adjusted_in', 'adjusted_out', 'damaged', 'expired'] as const;
+export const ADJUSTMENT_TYPES = [
+  "adjusted_in",
+  "adjusted_out",
+  "damaged",
+  "expired",
+] as const;
 
 export const adjustStockSchema = z.strictObject({
-  type: z.enum(ADJUSTMENT_TYPES, 'Type must be adjusted_in, adjusted_out, damaged or expired'),
+  type: z.enum(
+    ADJUSTMENT_TYPES,
+    "Type must be adjusted_in, adjusted_out, damaged or expired",
+  ),
   quantity,
   reason: z
-    .string('A reason is required')
+    .string("A reason is required")
     .trim()
-    .min(3, 'Please give a reason (at least 3 characters)')
-    .max(500, 'Reason cannot be longer than 500 characters'),
+    .min(3, "Please give a reason (at least 3 characters)")
+    .max(500, "Reason cannot be longer than 500 characters"),
 });
 
 // ── Lists and alerts ──────────────────────────────────
@@ -82,8 +104,8 @@ export const expiringQuerySchema = z.object({
 });
 
 export const movementsQuerySchema = z.object({
-  variant: objectId('Variant').optional(),
-  batch: objectId('Batch').optional(),
+  variant: objectId("Variant").optional(),
+  batch: objectId("Batch").optional(),
   type: z.enum(STOCK_MOVEMENT_TYPES).optional(),
   ...paginationQuery,
 });

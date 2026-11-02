@@ -2,6 +2,7 @@ import mongoose, { Types, type ClientSession } from 'mongoose';
 import Batch from '../../models/Batch.js';
 import Variant from '../../models/Variant.js';
 import { refreshProductSummary } from '../products/product.service.js';
+import { sellableExpiryCutoff } from './expiry.js';
 
 export interface StockLevel {
   sellable: number; // in active, unexpired batches
@@ -10,9 +11,8 @@ export interface StockLevel {
   shortfall: boolean; // true if reserved orders are no longer covered by sellable stock
 }
 
-// A batch can be sold while its expiry date is still in the future.
-// Expiry dates are stored as the start of that day in Pakistan, so stock
-// stops selling at 00:00 PKT on its expiry date.
+// A batch can be sold while it is active, has stock left, and has not reached
+// its stop-selling date (see expiry.ts).
 export function sellableBatchFilter(
   variantId: Types.ObjectId | string,
   now: Date = new Date()
@@ -21,7 +21,7 @@ export function sellableBatchFilter(
     variant: new Types.ObjectId(String(variantId)),
     status: 'active',
     quantityRemaining: mongoose.trusted({ $gt: 0 }),
-    expiryDate: mongoose.trusted({ $gt: now }),
+    expiryDate: mongoose.trusted({ $gt: sellableExpiryCutoff(now) }),
   };
 }
 
