@@ -27,6 +27,7 @@ export const STOCK_MOVEMENT_TYPES = [
   'reserved',
   'released',
   'packed',
+  'unpacked',
   'adjusted_in',
   'adjusted_out',
   'damaged',
@@ -156,4 +157,17 @@ export type DiscountType = (typeof DISCOUNT_TYPES)[number];
 export const PROMOTION_STATUSES = ['active', 'paused', 'ended'] as const;
 export type PromotionStatus = (typeof PROMOTION_STATUSES)[number];
 
+// ── Delivery ──────────────────────────────────────────
+export const PROVINCES = [
+  'Punjab',
+  'Sindh',
+  'Khyber Pakhtunkhwa',
+  'Balochistan',
+  'Islamabad Capital Territory',
+  'Gilgit-Baltistan',
+  'Azad Jammu and Kashmir',
+] as const;
+export type Province = (typeof PROVINCES)[number];
 
+export const CITY_SOURCES = ['seed', 'admin', 'customer'] as const;
+export type CitySource = (typeof CITY_SOURCES)[number];
