@@ -20,7 +20,7 @@ import {
 import { inventoryAdminRoutes } from "./modules/inventory/inventory.routes.js";
 import { settingsAdminRoutes } from './modules/settings/settings.routes.js';
 import { deliveryAdminRoutes, deliveryPublicRoutes } from './modules/delivery/delivery.routes.js';
-
+import { cartRoutes } from './modules/cart/cart.routes.js';
 
 
 const app: Express = express();
@@ -65,6 +65,7 @@ app.use("/api/admin/inventory", inventoryAdminRoutes);
 app.use('/api/admin/settings', settingsAdminRoutes);
 app.use('/api/delivery', deliveryPublicRoutes);
 app.use('/api/admin/delivery', deliveryAdminRoutes);
+app.use('/api/cart', cartRoutes);
 // 4. Error handling (must be last)
 app.use(notFound);
 app.use(errorHandler);
