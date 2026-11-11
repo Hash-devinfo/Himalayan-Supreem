@@ -71,6 +71,9 @@ export type ContactOutcome = (typeof CONTACT_OUTCOMES)[number];
 export const CANCELLATION_SOURCES = ['status_page', 'whatsapp', 'admin'] as const;
 export type CancellationSource = (typeof CANCELLATION_SOURCES)[number];
 
+export const CANCELLATION_REQUEST_STATUSES = ['requested', 'approved', 'declined'] as const;
+export type CancellationRequestStatus = (typeof CANCELLATION_REQUEST_STATUSES)[number];
+
 export const PAYMENT_METHODS = ['cod'] as const;
 export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
 
@@ -83,6 +86,9 @@ export const PAYMENT_STATUSES = [
   'partially_refunded',
 ] as const;
 export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
+
+export const REMITTANCE_STATUSES = ['pending', 'remitted'] as const;
+export type RemittanceStatus = (typeof REMITTANCE_STATUSES)[number];
 
 export const COURIERS = ['tcs', 'postex', 'leopards'] as const;
 export type Courier = (typeof COURIERS)[number];
