@@ -16,7 +16,7 @@ function shutdown(signal: string): void {
   if (shuttingDown) return;
   shuttingDown = true;
   console.log(`${signal} received, shutting down gracefully...`);
-console.log(`${signal} received, shutting down gracefully...`);
+
   stopScheduler()
   server.close(() => {
     disconnectDB()

@@ -12,8 +12,6 @@ import type {
   ListProductsAdminQuery,
   UpdateProductInput,
 } from './product.validation.js';
-import Batch from '../../models/Batch.js';
-import { formatPktDate } from '../../utils/dates.js';
 
 export interface PaginatedResult<T> {
   items: T[];
