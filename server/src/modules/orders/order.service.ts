@@ -105,7 +105,7 @@ export async function getOrder(idOrNumber: string) {
 
 // Every order change: one transaction (order + stock + customer + audit together).
 // Reading the order INSIDE the transaction means two admins clicking at once can never both act.
-async function changeOrder<T>(idOrNumber: string, change: (order: OrderDocument, session: ClientSession) => Promise<T>): Promise<T> {
+export async function changeOrder<T>(idOrNumber: string, change: (order: OrderDocument, session: ClientSession) => Promise<T>): Promise<T> {
   let result: T | undefined;
   await mongoose.connection.transaction(async (session) => {
     const order = await findOrderOrThrow(idOrNumber, session);
@@ -114,7 +114,7 @@ async function changeOrder<T>(idOrNumber: string, change: (order: OrderDocument,
   return result as T;
 }
 
-function setStatus(order: OrderDocument, to: OrderStatus, actor: ActorContext, note?: string): void {
+export function setStatus(order: OrderDocument, to: OrderStatus, actor: ActorContext, note?: string): void {
   assertCanChange(order.status, to);
   order.status = to;
   order.statusHistory.push({ status: to, at: new Date(), by: new mongoose.Types.ObjectId(actor.adminId), note });

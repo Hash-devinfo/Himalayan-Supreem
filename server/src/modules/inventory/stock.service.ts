@@ -4,6 +4,12 @@ import Variant from '../../models/Variant.js';
 import StockMovement from '../../models/StockMovement.js';
 import { refreshProductSummary } from '../products/product.service.js';
 import { sellableExpiryCutoff } from './expiry.js';
+import AppError from '../../utils/AppError.js';
+import { formatPktDate } from '../../utils/dates.js';
+
+
+
+
 
 export interface StockLevel {
   sellable: number; // in active, unexpired batches
@@ -125,4 +131,104 @@ export async function releaseStock(
     { session }
   );
   await recalculateVariantStock(variantId, session);
+}
+
+
+
+// ── Packing: taking units out of real batches ─────────
+
+export interface PackedFrom {
+  batch: Types.ObjectId;
+  batchNumber: string;
+  expiryDate: Date;
+  qty: number;
+}
+
+// Takes `quantity` units out of one batch for an order being packed. Inside a transaction.
+// The batch must belong to this size, be active, have enough left, and not be within the
+// stop-selling period (checked by DATE, so the daily job not having run yet changes nothing).
+export async function packFromBatch(
+  variantId: Types.ObjectId | string,
+  batchId: Types.ObjectId | string,
+  quantity: number,
+  orderId: Types.ObjectId,
+  session: ClientSession,
+  adminId: Types.ObjectId | string
+): Promise<PackedFrom> {
+  const condition: Record<string, unknown> = {
+    _id: batchId,
+    variant: variantId,
+    status: 'active',
+    quantityRemaining: mongoose.trusted({ $gte: quantity }),
+    expiryDate: mongoose.trusted({ $gt: sellableExpiryCutoff() }),
+  };
+  const batch = await Batch.findOneAndUpdate(condition, { $inc: { quantityRemaining: -quantity } }, { session, returnDocument: 'after' });
+
+  if (!batch) {
+    // Explain exactly why, so the admin can choose another batch
+    const found = await Batch.findById(batchId).session(session);
+    if (!found || String(found.variant) !== String(variantId)) {
+      throw new AppError('That batch does not belong to this product size', 400);
+    }
+    if (found.expiryDate <= sellableExpiryCutoff()) {
+      throw new AppError(`Batch ${found.batchNumber} expires on ${formatPktDate(found.expiryDate)} and can no longer be sold`, 409);
+    }
+    throw new AppError(`Only ${found.quantityRemaining} left in batch ${found.batchNumber}`, 409);
+  }
+
+  if (batch.quantityRemaining === 0) {
+    batch.status = 'depleted';
+    await batch.save({ session });
+  }
+
+  await StockMovement.create(
+    [{ type: 'packed', variant: variantId, product: batch.product, batch: batch._id, quantity, order: orderId, admin: adminId }],
+    { session }
+  );
+
+  return { batch: batch._id, batchNumber: batch.batchNumber, expiryDate: batch.expiryDate, qty: quantity };
+}
+
+// Undo packing: units go back into the SAME batch they came from. Inside a transaction.
+export async function unpackToBatch(
+  variantId: Types.ObjectId | string,
+  batchId: Types.ObjectId | string,
+  quantity: number,
+  orderId: Types.ObjectId,
+  session: ClientSession,
+  adminId: Types.ObjectId | string
+): Promise<void> {
+  const batch = await Batch.findOneAndUpdate(
+    { _id: batchId, variant: variantId },
+    { $inc: { quantityRemaining: quantity } },
+    { session, returnDocument: 'after' }
+  );
+  if (!batch) throw new Error(`Batch ${String(batchId)} not found while undoing packing`);
+
+  // A batch that ran out is in use again. (A written-off batch stays written off.)
+  if (batch.status === 'depleted') {
+    batch.status = 'active';
+    await batch.save({ session });
+  }
+
+  await StockMovement.create(
+    [{ type: 'unpacked', variant: variantId, product: batch.product, batch: batch._id, quantity, order: orderId, admin: adminId }],
+    { session }
+  );
+}
+
+// Moves units between "reserved" and "taken out of batches" on the size itself, then recalculates.
+// change < 0: packing (reservation used up). change > 0: undo packing (reserved again).
+export async function changeReservation(
+  variantId: Types.ObjectId | string,
+  change: number,
+  session: ClientSession
+): Promise<StockLevel> {
+  const filter: Record<string, unknown> = { _id: variantId };
+  if (change < 0) filter.reservedQty = mongoose.trusted({ $gte: -change });
+  const result = await Variant.updateOne(filter, { $inc: { reservedQty: change } }, { session });
+  if (result.matchedCount !== 1) {
+    throw new Error(`Cannot change reservation of variant ${String(variantId)} by ${change}`);
+  }
+  return recalculateVariantStock(variantId, session);
 }
