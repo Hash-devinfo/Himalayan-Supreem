@@ -22,6 +22,13 @@ import { settingsAdminRoutes } from './modules/settings/settings.routes.js';
 import { deliveryAdminRoutes, deliveryPublicRoutes } from './modules/delivery/delivery.routes.js';
 import { cartRoutes } from './modules/cart/cart.routes.js';
 import { checkoutRoutes } from './modules/checkout/checkout.routes.js';
+import { orderAdminRoutes } from './modules/orders/order.routes.js';
+
+
+
+
+
+
 
 const app: Express = express();
 
@@ -67,6 +74,7 @@ app.use('/api/delivery', deliveryPublicRoutes);
 app.use('/api/admin/delivery', deliveryAdminRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/checkout', checkoutRoutes);
+app.use('/api/admin/orders', orderAdminRoutes);
 // 4. Error handling (must be last)
 app.use(notFound);
 app.use(errorHandler);
