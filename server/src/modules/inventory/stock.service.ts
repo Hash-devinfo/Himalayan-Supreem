@@ -102,3 +102,27 @@ export async function reserveStock(
 
   return variant;
 }
+
+
+// Gives back stock held by an order that will not be packed (cancelled). Also inside a transaction.
+export async function releaseStock(
+  variantId: Types.ObjectId | string,
+  quantity: number,
+  orderId: Types.ObjectId,
+  session: ClientSession,
+  adminId?: Types.ObjectId | string
+): Promise<void> {
+  const filter: Record<string, unknown> = { _id: variantId, reservedQty: mongoose.trusted({ $gte: quantity }) };
+  const result = await Variant.updateOne(filter, { $inc: { reservedQty: -quantity } }, { session });
+  if (result.matchedCount !== 1) {
+    // Should never happen: the reservation is missing. Stop rather than make stock numbers wrong.
+    throw new Error(`Cannot release ${quantity} of variant ${String(variantId)}: not reserved`);
+  }
+
+  const variant = await Variant.findById(variantId).select('product').session(session);
+  await StockMovement.create(
+    [{ type: 'released', variant: variantId, product: variant?.product, quantity, order: orderId, admin: adminId }],
+    { session }
+  );
+  await recalculateVariantStock(variantId, session);
+}
