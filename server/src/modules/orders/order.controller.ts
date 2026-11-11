@@ -1,10 +1,13 @@
 import type { Request, Response } from 'express';
 import * as orderService from './order.service.js';
 import * as packingService from './packing.service.js';
+import * as fulfillmentService from './fulfillment.service.js';
 import { actorFrom } from '../../middleware/requireAdmin.js';
 import { parseOrThrow } from '../../middleware/validate.js';
 import { listOrdersQuerySchema, type CancelOrderInput, type LogCallInput, type UpdateNotesInput } from './order.validation.js';
 import type { PackOrderInput, UnpackOrderInput } from './packing.validation.js';
+import type { DeliverOrderInput, FailDeliveryInput, RemitInput, ReturnOrderInput, ShipOrderInput } from './fulfillment.validation.js';
+
 
 
 type IdParams = { id: string };
@@ -53,4 +56,34 @@ export async function unpack(req: Request<IdParams>, res: Response): Promise<voi
 
 export async function packingSlip(req: Request<IdParams>, res: Response): Promise<void> {
   res.json({ success: true, slip: await packingService.getPackingSlip(req.params.id) });
+}
+
+
+
+
+// ── Delivery ──────────────────────────────────────────
+
+export async function ship(req: Request<IdParams>, res: Response): Promise<void> {
+  const result = await fulfillmentService.shipOrder(req.params.id, req.body as ShipOrderInput, actorFrom(req));
+  res.json({ success: true, ...result });
+}
+
+export async function deliver(req: Request<IdParams>, res: Response): Promise<void> {
+  const result = await fulfillmentService.deliverOrder(req.params.id, (req.body ?? {}) as DeliverOrderInput, actorFrom(req));
+  res.json({ success: true, ...result });
+}
+
+export async function failDelivery(req: Request<IdParams>, res: Response): Promise<void> {
+  const result = await fulfillmentService.failDelivery(req.params.id, req.body as FailDeliveryInput, actorFrom(req));
+  res.json({ success: true, ...result });
+}
+
+export async function returnOrder(req: Request<IdParams>, res: Response): Promise<void> {
+  const result = await fulfillmentService.returnOrder(req.params.id, req.body as ReturnOrderInput, actorFrom(req));
+  res.json({ success: true, ...result });
+}
+
+export async function remit(req: Request, res: Response): Promise<void> {
+  const result = await fulfillmentService.markRemitted(req.body as RemitInput, actorFrom(req));
+  res.json({ success: true, ...result });
 }
