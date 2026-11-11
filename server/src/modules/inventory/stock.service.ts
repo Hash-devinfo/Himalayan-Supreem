@@ -1,6 +1,7 @@
 import mongoose, { Types, type ClientSession } from 'mongoose';
 import Batch from '../../models/Batch.js';
 import Variant from '../../models/Variant.js';
+import StockMovement from '../../models/StockMovement.js';
 import { refreshProductSummary } from '../products/product.service.js';
 import { sellableExpiryCutoff } from './expiry.js';
 
@@ -53,4 +54,51 @@ export async function recalculateVariantStock(
   await refreshProductSummary(variant.product, session);
 
   return { sellable, reserved, available, shortfall: reserved > sellable };
+}
+
+
+
+
+// ── Reserving stock for an order ──────────────────────
+
+// Thrown when there is not enough sellable stock. The caller turns it into a customer message.
+export class StockShortError extends Error {
+  constructor(
+    readonly variantId: string,
+    readonly available: number
+  ) {
+    super(`Only ${available} available`);
+    this.name = 'StockShortError';
+  }
+}
+
+// Holds `quantity` units of a size for an order (status "new" until packing).
+// MUST run inside a transaction: if two orders race for the last unit, MongoDB lets only one
+// transaction change the size; the other is retried, sees the new reservation and fails.
+export async function reserveStock(
+  variantId: Types.ObjectId | string,
+  quantity: number,
+  orderId: Types.ObjectId,
+  session: ClientSession
+) {
+  const [totals] = await Batch.aggregate<{ total: number }>([
+    { $match: sellableBatchFilter(variantId) },
+    { $group: { _id: null, total: { $sum: '$quantityRemaining' } } },
+  ]).session(session);
+  const sellable = totals?.total ?? 0;
+
+  const variant = await Variant.findById(variantId).session(session);
+  if (!variant) throw new StockShortError(String(variantId), 0);
+
+  const available = Math.max(0, sellable - variant.reservedQty);
+  if (available < quantity) throw new StockShortError(String(variantId), available);
+
+  await Variant.updateOne({ _id: variant._id }, { $inc: { reservedQty: quantity } }, { session });
+  await StockMovement.create(
+    [{ type: 'reserved', variant: variant._id, product: variant.product, quantity, order: orderId }],
+    { session }
+  );
+  await recalculateVariantStock(variant._id, session);
+
+  return variant;
 }
