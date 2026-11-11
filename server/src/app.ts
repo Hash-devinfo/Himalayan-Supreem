@@ -23,7 +23,7 @@ import { deliveryAdminRoutes, deliveryPublicRoutes } from './modules/delivery/de
 import { cartRoutes } from './modules/cart/cart.routes.js';
 import { checkoutRoutes } from './modules/checkout/checkout.routes.js';
 import { orderAdminRoutes } from './modules/orders/order.routes.js';
-
+import { orderPublicRoutes } from './modules/orders/orderPublic.routes.js';
 
 
 
@@ -75,6 +75,16 @@ app.use('/api/admin/delivery', deliveryAdminRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/checkout', checkoutRoutes);
 app.use('/api/admin/orders', orderAdminRoutes);
+app.use('/api/orders', orderPublicRoutes);
+
+
+
+
+
+
+
+
+
 // 4. Error handling (must be last)
 app.use(notFound);
 app.use(errorHandler);
