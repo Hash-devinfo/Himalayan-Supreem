@@ -36,3 +36,16 @@ export type ListOrdersQuery = z.infer<typeof listOrdersQuerySchema>;
 export type LogCallInput = z.infer<typeof logCallSchema>;
 export type CancelOrderInput = z.infer<typeof cancelOrderSchema>;
 export type UpdateNotesInput = z.infer<typeof updateNotesSchema>;
+
+
+// A cancellation request the customer sent by WhatsApp (the admin records it)
+export const recordCancellationRequestSchema = z.strictObject({
+  reason: optionalText('Reason', 500).optional(),
+});
+
+export const declineCancellationSchema = z.strictObject({
+  note: z.string('Note is required').trim().min(3, 'Write why the request is declined (e.g. customer changed their mind on the call)').max(500),
+});
+
+export type RecordCancellationRequestInput = z.infer<typeof recordCancellationRequestSchema>;
+export type DeclineCancellationInput = z.infer<typeof declineCancellationSchema>;

@@ -76,7 +76,11 @@ async function findForPacking(idOrNumber: string): Promise<OrderDocument> {
 export async function packOrder(idOrNumber: string, input: PackOrderInput, actor: ActorContext) {
   const settings = await getSettings();
 
-  return changeOrder(idOrNumber, async (order, session) => {
+    return changeOrder(idOrNumber, async (order, session) => {
+    // A customer asked to cancel: decide that first (call them), so an unwanted parcel is never sent
+    if (order.cancellation.requestStatus === 'requested') {
+      throw new AppError('The customer has asked to cancel this order. Approve or decline the request before packing.', 409);
+    }
     setStatus(order, 'packing', actor, 'Packed');
 
     for (const item of order.items) {

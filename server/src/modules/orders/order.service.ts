@@ -8,8 +8,14 @@ import { formatPkMobile, normalizePkMobile, whatsappDigits } from '../../utils/p
 import { recordAudit, type ActorContext } from '../audit/audit.service.js';
 import { releaseStock } from '../inventory/stock.service.js';
 import { AWAITING_CALL, CANCELLABLE, assertCanChange, statusLabel } from './orderStatus.js';
-import type { CancelOrderInput, ListOrdersQuery, LogCallInput, UpdateNotesInput } from './order.validation.js';
-
+import type {
+  CancelOrderInput,
+  DeclineCancellationInput,
+  ListOrdersQuery,
+  LogCallInput,
+  RecordCancellationRequestInput,
+  UpdateNotesInput,
+} from './order.validation.js';
 // Calls that did not reach the customer
 const UNANSWERED: readonly ContactOutcome[] = ['no_answer', 'busy', 'switched_off', 'wrong_number'];
 const MAX_UNANSWERED_CALLS = 3;
@@ -212,8 +218,12 @@ export async function cancelOrder(idOrNumber: string, input: CancelOrderInput, a
     setStatus(order, 'cancelled', actor, input.reason);
     order.cancellation.reason = input.reason;
     order.cancellation.decidedAt = new Date();
-    order.cancellation.decidedBy = new mongoose.Types.ObjectId(actor.adminId);
-    if (order.cancellation.requestStatus === 'requested') order.cancellation.requestStatus = 'approved';
+       order.cancellation.decidedBy = new mongoose.Types.ObjectId(actor.adminId);
+    if (order.cancellation.requestStatus === 'requested') {
+      // Approving the customer's request: design 3.6 says the admin confirms it on a WhatsApp call first
+      order.cancellation.requestStatus = 'approved';
+      order.cancellation.confirmedOnCall = true;
+    }
 
     await releaseOrderStock(order, actor, session);
     await order.save({ session });
@@ -257,5 +267,75 @@ export async function updateNotes(idOrNumber: string, input: UpdateNotesInput, a
       session
     );
     return { order };
+  });
+}
+
+
+// ── Cancellation requests (design 3.6) ────────────────
+
+// The customer asked by WhatsApp: the admin records it, so it shows as a badge like status-page requests
+export async function recordCancellationRequest(idOrNumber: string, input: RecordCancellationRequestInput, actor: ActorContext) {
+  return changeOrder(idOrNumber, async (order, session) => {
+    if (!CANCELLABLE.includes(order.status)) {
+      throw new AppError(`Only orders not yet packed can be cancelled (this one is "${statusLabel(order.status)}")`, 409);
+    }
+    if (order.cancellation.requestStatus === 'requested') return { order };
+
+    order.cancellation.requestStatus = 'requested';
+    order.cancellation.requestedVia = 'whatsapp';
+    order.cancellation.requestedAt = new Date();
+    order.cancellation.reason = input.reason;
+    order.cancellation.decidedAt = undefined;
+    order.cancellation.decidedBy = undefined;
+    await order.save({ session });
+
+    await recordAudit(
+      {
+        admin: actor.adminId,
+        action: 'order.cancellation_requested',
+        entityType: 'Order',
+        entityId: order.id,
+        after: { requestedVia: 'whatsapp', reason: input.reason ?? null },
+        ip: actor.ip,
+      },
+      session
+    );
+    return { order };
+  });
+}
+
+// After the WhatsApp call the customer wants to keep the order: the badge goes, the note is kept
+export async function declineCancellationRequest(idOrNumber: string, input: DeclineCancellationInput, actor: ActorContext) {
+  return changeOrder(idOrNumber, async (order, session) => {
+    if (order.cancellation.requestStatus !== 'requested') {
+      throw new AppError('There is no open cancellation request on this order', 409);
+    }
+
+    order.cancellation.requestStatus = 'declined';
+    order.cancellation.confirmedOnCall = true;
+    order.cancellation.decidedAt = new Date();
+    order.cancellation.decidedBy = new mongoose.Types.ObjectId(actor.adminId);
+    // The status stays the same; the history records the decision
+    order.statusHistory.push({
+      status: order.status,
+      at: new Date(),
+      by: new mongoose.Types.ObjectId(actor.adminId),
+      note: `Cancellation request declined: ${input.note}`,
+    });
+    await order.save({ session });
+
+    await recordAudit(
+      {
+        admin: actor.adminId,
+        action: 'order.cancellation_declined',
+        entityType: 'Order',
+        entityId: order.id,
+        before: { requestStatus: 'requested' },
+        after: { requestStatus: 'declined', note: input.note },
+        ip: actor.ip,
+      },
+      session
+    );
+    return { order, statusLabel: statusLabel(order.status) };
   });
 }

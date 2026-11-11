@@ -4,7 +4,9 @@ import { validateBody } from "../../middleware/validate.js";
 import * as orderController from "./order.controller.js";
 import {
   cancelOrderSchema,
+  declineCancellationSchema,
   logCallSchema,
+  recordCancellationRequestSchema,
   updateNotesSchema,
 } from "./order.validation.js";
 import { packOrderSchema, unpackOrderSchema } from "./packing.validation.js";
@@ -80,4 +82,16 @@ orderAdminRoutes.post(
   "/:id/return",
   validateBody(returnOrderSchema),
   orderController.returnOrder,
+);
+
+// Cancellation requests (8D). Approving = POST /:id/cancel
+orderAdminRoutes.post(
+  "/:id/cancellation-request",
+  validateBody(recordCancellationRequestSchema),
+  orderController.recordCancellationRequest,
+);
+orderAdminRoutes.post(
+  "/:id/cancellation-request/decline",
+  validateBody(declineCancellationSchema),
+  orderController.declineCancellationRequest,
 );

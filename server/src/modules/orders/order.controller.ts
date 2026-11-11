@@ -4,7 +4,14 @@ import * as packingService from './packing.service.js';
 import * as fulfillmentService from './fulfillment.service.js';
 import { actorFrom } from '../../middleware/requireAdmin.js';
 import { parseOrThrow } from '../../middleware/validate.js';
-import { listOrdersQuerySchema, type CancelOrderInput, type LogCallInput, type UpdateNotesInput } from './order.validation.js';
+import {
+  listOrdersQuerySchema,
+  type CancelOrderInput,
+  type DeclineCancellationInput,
+  type LogCallInput,
+  type RecordCancellationRequestInput,
+  type UpdateNotesInput,
+} from './order.validation.js';
 import type { PackOrderInput, UnpackOrderInput } from './packing.validation.js';
 import type { DeliverOrderInput, FailDeliveryInput, RemitInput, ReturnOrderInput, ShipOrderInput } from './fulfillment.validation.js';
 
@@ -85,5 +92,18 @@ export async function returnOrder(req: Request<IdParams>, res: Response): Promis
 
 export async function remit(req: Request, res: Response): Promise<void> {
   const result = await fulfillmentService.markRemitted(req.body as RemitInput, actorFrom(req));
+  res.json({ success: true, ...result });
+}
+
+
+// ── Cancellation requests ─────────────────────────────
+
+export async function recordCancellationRequest(req: Request<IdParams>, res: Response): Promise<void> {
+  const result = await orderService.recordCancellationRequest(req.params.id, req.body as RecordCancellationRequestInput, actorFrom(req));
+  res.json({ success: true, ...result });
+}
+
+export async function declineCancellationRequest(req: Request<IdParams>, res: Response): Promise<void> {
+  const result = await orderService.declineCancellationRequest(req.params.id, req.body as DeclineCancellationInput, actorFrom(req));
   res.json({ success: true, ...result });
 }
