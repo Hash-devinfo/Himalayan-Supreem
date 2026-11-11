@@ -6,8 +6,8 @@ import { CART_RETENTION_DAYS, MAX_CART_LINES, MAX_QTY_PER_ITEM } from '../../con
 import AppError from '../../utils/AppError.js';
 import { addDays } from '../../utils/dates.js';
 import { newCartSessionId } from './cart.cookie.js';
-import type { AddItemInput, UpdateItemInput } from './cart.validation.js';
-
+import { calculateDelivery, resolveCity, type DeliveryQuote } from '../delivery/quote.service.js';
+import type { AddItemInput, DeliveryPreviewInput, UpdateItemInput } from './cart.validation.js';
 // ── What the customer sees ───────────────────────────
 
 export interface CartLine {
@@ -323,4 +323,29 @@ async function clearCartOnce(sessionId: string | undefined): Promise<CartResult>
   touch(cart);
   await cart.save();
   return { view: emptyView(), sessionId: cart.sessionId };
+}
+
+
+
+// ── Delivery preview ──────────────────────────────────
+
+export interface CartWithDelivery {
+  cart: CartView;
+  delivery: DeliveryQuote;
+  total: number | null; // subtotal + delivery; null when the city cannot be delivered to
+}
+
+// The cart, re-checked, plus the delivery charge for the chosen city (the same rules as 7A).
+// Only previews: nothing is saved, and the order total is worked out again at checkout.
+export async function previewDelivery(sessionId: string | undefined, input: DeliveryPreviewInput): Promise<CartWithDelivery> {
+  const cart = await getCart(sessionId);
+  if (cart.itemCount === 0) {
+    throw new AppError('Your cart is empty. Add something to see the delivery charge.', 400);
+  }
+
+  const city = await resolveCity(input);
+  const delivery = await calculateDelivery(city, cart.weightGrams, cart.subtotal);
+  const total = delivery.available ? cart.subtotal + delivery.charge : null;
+
+  return { cart, delivery, total };
 }

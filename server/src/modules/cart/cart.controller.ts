@@ -1,8 +1,7 @@
 import type { Request, Response } from 'express';
 import * as cartService from './cart.service.js';
 import { CART_COOKIE_NAME, cartCookieOptions, readCartSessionId } from './cart.cookie.js';
-import type { AddItemInput, UpdateItemInput } from './cart.validation.js';
-
+import type { AddItemInput, DeliveryPreviewInput, UpdateItemInput } from './cart.validation.js';
 type VariantParams = { variantId: string };
 
 function sessionFrom(req: Request): string | undefined {
@@ -38,4 +37,10 @@ export async function removeItem(req: Request<VariantParams>, res: Response): Pr
 export async function clear(req: Request, res: Response): Promise<void> {
   const result = await cartService.clearCart(sessionFrom(req));
   sendCart(res, result);
+}
+
+
+export async function previewDelivery(req: Request, res: Response): Promise<void> {
+  const result = await cartService.previewDelivery(sessionFrom(req), req.body as DeliveryPreviewInput);
+  res.json({ success: true, ...result });
 }
