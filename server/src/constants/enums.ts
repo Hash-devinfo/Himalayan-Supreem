@@ -96,6 +96,9 @@ export type Courier = (typeof COURIERS)[number];
 export const RETURN_DECISIONS = ['restock', 'write_off'] as const;
 export type ReturnDecision = (typeof RETURN_DECISIONS)[number];
 
+
+export const DELIVERY_FAILURE_REASONS = ['refused', 'uncollected', 'address_issue', 'other'] as const;
+export type DeliveryFailureReason = (typeof DELIVERY_FAILURE_REASONS)[number];
 // ── Refunds ───────────────────────────────────────────
 export const REFUND_REASONS = ['damaged', 'incorrect'] as const;
 export type RefundReason = (typeof REFUND_REASONS)[number];

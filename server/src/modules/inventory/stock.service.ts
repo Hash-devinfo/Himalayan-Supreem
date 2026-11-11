@@ -232,3 +232,50 @@ export async function changeReservation(
   }
   return recalculateVariantStock(variantId, session);
 }
+
+
+
+// ── Returned parcels (design 3.7) ─────────────────────
+
+// Returned goods in good condition go back into the SAME batch they were packed from
+export async function restockReturned(
+  variantId: Types.ObjectId | string,
+  batchId: Types.ObjectId | string,
+  quantity: number,
+  orderId: Types.ObjectId,
+  session: ClientSession,
+  adminId: Types.ObjectId | string
+): Promise<void> {
+  const batch = await Batch.findOneAndUpdate(
+    { _id: batchId, variant: variantId },
+    { $inc: { quantityRemaining: quantity } },
+    { session, returnDocument: 'after' }
+  );
+  if (!batch) throw new Error(`Batch ${String(batchId)} not found while restocking a return`);
+  if (batch.status === 'depleted') {
+    batch.status = 'active';
+    await batch.save({ session });
+  }
+  await StockMovement.create(
+    [{ type: 'return_restocked', variant: variantId, product: batch.product, batch: batch._id, quantity, order: orderId, admin: adminId }],
+    { session }
+  );
+}
+
+// Returned goods that cannot be sold again. They already left the batch at packing,
+// so only the movement is recorded (for reports and the reason).
+export async function writeOffReturned(
+  variantId: Types.ObjectId | string,
+  batchId: Types.ObjectId | string,
+  quantity: number,
+  orderId: Types.ObjectId,
+  reason: string,
+  session: ClientSession,
+  adminId: Types.ObjectId | string
+): Promise<void> {
+  const batch = await Batch.findById(batchId).select('product').session(session);
+  await StockMovement.create(
+    [{ type: 'return_written_off', variant: variantId, product: batch?.product, batch: batchId, quantity, order: orderId, reason, admin: adminId }],
+    { session }
+  );
+}
