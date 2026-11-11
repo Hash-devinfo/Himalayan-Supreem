@@ -32,6 +32,7 @@ export type DeliveryQuote =
       available: true;
       city: QuoteCity;
       zone: string;
+      zoneId: string;
       estimateText: string;
       standardCharge: number; // before free delivery
       charge: number; // what the customer pays
@@ -131,6 +132,7 @@ export async function calculateDelivery(city: ResolvedCity, weightGrams: number,
     available: true,
     city: quoteCity,
     zone: zone.name,
+    zoneId: zone.id,
     estimateText: zone.estimateText,
     standardCharge,
     charge: freeDelivery ? 0 : standardCharge,
