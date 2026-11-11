@@ -263,7 +263,7 @@ const statusChangeSchema = new Schema<StatusChange>(
 
 const contactAttemptSchema = new Schema<ContactAttempt>(
   {
-    attemptNo: { type: Number, required: true, min: 1, max: 3 },
+    attemptNo: { type: Number, required: true, min: 1 }, // the service allows at most 3 unanswered calls
     at: { type: Date, required: true, default: Date.now },
     outcome: { type: String, enum: CONTACT_OUTCOMES, required: true },
     note: { type: String, trim: true, maxlength: 500 },
