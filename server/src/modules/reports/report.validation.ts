@@ -32,3 +32,9 @@ export type SalesGroup = (typeof SALES_GROUPS)[number];
 export const profitQuerySchema = checkRange(z.strictObject({ ...dateRangeQuery }));
 
 export type ProfitQuery = z.infer<typeof profitQuerySchema>;
+
+
+// Stock levels are always "now"; the date range is for stock movements
+export const inventoryQuerySchema = checkRange(z.strictObject({ ...dateRangeQuery }));
+
+export type InventoryQuery = z.infer<typeof inventoryQuerySchema>;
