@@ -128,6 +128,7 @@ export const NOTIFICATION_TEMPLATES = [
   'shipped',
   'delivered',
   'cancelled',
+  'missedCall',
   'deliveryFailed',
 ] as const;
 export type NotificationTemplate = (typeof NOTIFICATION_TEMPLATES)[number];
