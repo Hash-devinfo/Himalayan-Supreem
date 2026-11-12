@@ -8,6 +8,7 @@ import { recordAudit, type ActorContext } from '../audit/audit.service.js';
 import { recalculateVariantStock, restockReturned, writeOffReturned } from '../inventory/stock.service.js';
 import { changeOrder, setStatus } from './order.service.js';
 import { statusLabel } from './orderStatus.js';
+import { notifyOrder } from '../notifications/notification.service.js';
 import type { DeliverOrderInput, FailDeliveryInput, RemitInput, ReturnOrderInput, ShipOrderInput } from './fulfillment.validation.js';
 
 const FAILURE_LABELS = { refused: 'Refused by customer', uncollected: 'Not collected', address_issue: 'Address problem', other: 'Other' } as const;
@@ -15,10 +16,11 @@ const FAILURE_LABELS = { refused: 'Refused by customer', uncollected: 'Not colle
 // ── Shipped (first dispatch, or courier re-attempt) ──
 
 export async function shipOrder(idOrNumber: string, input: ShipOrderInput, actor: ActorContext) {
-  return changeOrder(idOrNumber, async (order, session) => {
+  let firstDispatch = false;
+  const result = await changeOrder(idOrNumber, async (order, session) => {
     const before = order.status;
     const reattempt = before === 'delivery_failed';
-
+    firstDispatch = !reattempt;
     if (!reattempt) {
       if (!input.courier || !input.trackingNumber) {
         throw new AppError('Choose the courier and enter the tracking number', 400);
@@ -55,14 +57,20 @@ export async function shipOrder(idOrNumber: string, input: ShipOrderInput, actor
       },
       session
     );
-    return { order, statusLabel: statusLabel(order.status) };
+      return { order, statusLabel: statusLabel(order.status) };
   });
+
+  // The shipped email (with courier and tracking) goes once, on the first dispatch
+  if (firstDispatch) notifyOrder(result.order._id, 'shipped');
+  return result;
 }
+
+
 
 // ── Delivered: COD collected ──────────────────────────
 
 export async function deliverOrder(idOrNumber: string, input: DeliverOrderInput, actor: ActorContext) {
-  return changeOrder(idOrNumber, async (order, session) => {
+  const result = await changeOrder(idOrNumber, async (order, session) => {
     const amount = input.amountCollected ?? (order.payment.method === 'cod' ? order.pricing.total : 0);
     if (amount !== order.pricing.total && !input.note) {
       throw new AppError(`The order total is Rs ${order.pricing.total}. Add a note explaining why Rs ${amount} was collected.`, 400);
@@ -98,6 +106,9 @@ export async function deliverOrder(idOrNumber: string, input: DeliverOrderInput,
     );
     return { order, statusLabel: statusLabel(order.status) };
   });
+
+  notifyOrder(result.order._id, 'delivered');
+  return result;
 }
 
 // ── Delivery failed ───────────────────────────────────

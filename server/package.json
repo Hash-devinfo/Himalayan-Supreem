@@ -9,7 +9,8 @@
     "build": "rm -rf dist && tsc",
     "start": "node dist/server.js",
     "create-admin": "tsx src/scripts/createAdmin.ts",
-    "seed:cities": "tsx src/scripts/seedCities.ts"
+    "seed:cities": "tsx src/scripts/seedCities.ts",
+    "reset-admin-password": "tsx src/scripts/resetAdminPassword.ts"
   },
   "keywords": [],
   "author": "",

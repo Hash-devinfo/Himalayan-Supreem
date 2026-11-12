@@ -10,6 +10,7 @@ import { calculateDelivery, resolveCity } from '../delivery/quote.service.js';
 import { getSettings } from '../settings/settings.service.js';
 import { reserveStock, StockShortError } from '../inventory/stock.service.js';
 import { nextOrderNumber } from './orderNumber.js';
+import { notifyOrder } from '../notifications/notification.service.js';
 import type { CheckoutInput } from './checkout.validation.js';
 
 // ── What the customer sees after ordering ────────────
@@ -190,8 +191,10 @@ export async function placeOrder(sessionId: string | undefined, input: CheckoutI
     throw error;
   }
 
-  if (!order) throw new Error('Order was not created');
+    if (!order) throw new Error('Order was not created');
 
-  // Later phases: order-placed email (when an email was given) and the order_completed analytics event.
+  // After the order is safely saved: the order-placed email (if the customer gave an email).
+  // The order_completed analytics event comes in a later phase.
+  notifyOrder(order._id, 'orderPlaced');
   return toConfirmation(order);
 }
