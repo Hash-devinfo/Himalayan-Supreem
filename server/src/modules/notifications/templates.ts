@@ -53,7 +53,8 @@ export function renderTemplate(text: string, values: PlaceholderValues): string 
   return text.replace(PLACEHOLDER_PATTERN, (whole, name: string) => (name in values ? values[name as PlaceholderName] : whole));
 }
 
-const COURIER_NAMES = { tcs: 'TCS', postex: 'PostEx', leopards: 'Leopards' } as const;
+export const COURIER_NAMES = { tcs: 'TCS', postex: 'PostEx', leopards: 'Leopards' } as const;
+
 
 function rupees(amount: number): string {
   return `Rs ${amount.toLocaleString('en-PK')}`;
