@@ -9,3 +9,7 @@ reportAdminRoutes.use(requireAdmin);
 
 // ?from=2026-11-01&to=2026-11-30&groupBy=day|product|variant|category|courier
 reportAdminRoutes.get('/sales', reportController.sales);
+
+
+// ?from=2026-11-01&to=2026-11-30
+reportAdminRoutes.get('/profit', reportController.profit);

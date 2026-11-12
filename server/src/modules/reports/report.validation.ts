@@ -27,3 +27,8 @@ export const salesQuerySchema = checkRange(
 
 export type SalesQuery = z.infer<typeof salesQuerySchema>;
 export type SalesGroup = (typeof SALES_GROUPS)[number];
+
+
+export const profitQuerySchema = checkRange(z.strictObject({ ...dateRangeQuery }));
+
+export type ProfitQuery = z.infer<typeof profitQuerySchema>;
