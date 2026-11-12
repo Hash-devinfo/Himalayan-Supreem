@@ -18,6 +18,25 @@ if (jwtSecret.length < 32) {
   process.exit(1);
 }
 
+// Email (optional until the business has an email account). All four must be set, or email is off.
+function smtpSettings() {
+  const host = process.env.SMTP_HOST;
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASS;
+  const from = process.env.MAIL_FROM;
+  if (!host || !user || !pass || !from) return null;
+  const port = Number(process.env.SMTP_PORT) || 587;
+  return {
+    host,
+    port,
+    // Port 465 uses TLS from the start; 587 upgrades with STARTTLS
+    secure: process.env.SMTP_SECURE ? process.env.SMTP_SECURE === 'true' : port === 465,
+    user,
+    pass,
+    from,
+  };
+}
+
 const env = {
   nodeEnv: process.env.NODE_ENV ?? 'development',
   isProduction: process.env.NODE_ENV === 'production',
@@ -26,6 +45,7 @@ const env = {
   mongoUri: required('MONGO_URI'),
   jwtSecret,
   jwtExpiresIn: process.env.JWT_EXPIRES_IN ?? '1d',
+    smtp: smtpSettings(),
 } as const;
 
 export default env;
