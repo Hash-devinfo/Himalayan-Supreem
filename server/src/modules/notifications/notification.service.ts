@@ -4,6 +4,7 @@ import Order from '../../models/Order.js';
 import type { NotificationChannel, NotificationStatus, NotificationTemplate } from '../../constants/enums.js';
 import AppError from '../../utils/AppError.js';
 import { describeEmailError, sendEmail } from '../../providers/notifications/email.js';
+import { buildWhatsappLink } from '../../providers/notifications/whatsappLink.js';
 import { recordAudit, type ActorContext } from '../audit/audit.service.js';
 import { getSettings } from '../settings/settings.service.js';
 import { TEMPLATE_INFO, renderTemplate, valuesForOrder } from './templates.js';
@@ -139,4 +140,67 @@ export async function retryNotification(id: string, actor: ActorContext) {
   });
 
   return updated;
+}
+
+
+
+// ── WhatsApp (Release 1: the admin presses Send) ──────
+
+// The message that usually fits the order's current step
+const SUGGESTED_FOR_STATUS: Partial<Record<string, NotificationTemplate>> = {
+  new: 'orderPlaced',
+  contact_attempt_1: 'missedCall',
+  contact_attempt_2: 'missedCall',
+  contact_attempt_3: 'missedCall',
+  confirmed: 'confirmed',
+  shipped: 'shipped',
+  delivered: 'delivered',
+  delivery_failed: 'deliveryFailed',
+  cancelled: 'cancelled',
+};
+
+async function findOrder(idOrNumber: string) {
+  const order = await Order.findOne(
+    mongoose.isValidObjectId(idOrNumber) ? { _id: idOrNumber } : { orderNumber: idOrNumber.trim().toUpperCase() }
+  );
+  if (!order) throw new AppError('Order not found', 404);
+  return order;
+}
+
+// For the order screen: every WhatsApp message, whether it is written, and the one that fits now
+export async function whatsappOptions(idOrNumber: string) {
+  const [order, settings] = await Promise.all([findOrder(idOrNumber), getSettings()]);
+  const suggested = SUGGESTED_FOR_STATUS[order.status] ?? null;
+  return {
+    orderNumber: order.orderNumber,
+    suggested,
+    messages: (Object.keys(TEMPLATE_INFO) as NotificationTemplate[])
+      .filter((key) => TEMPLATE_INFO[key].whatsapp)
+      .map((key) => ({ key, label: TEMPLATE_INFO[key].label, ready: Boolean(settings.templates[key]?.whatsappBody), suggested: key === suggested })),
+  };
+}
+
+// Builds the link with the business's words filled in for this order, and logs it as "prepared"
+export async function prepareWhatsapp(idOrNumber: string, template: NotificationTemplate, actor: ActorContext) {
+  if (!TEMPLATE_INFO[template].whatsapp) throw new AppError('This message is not sent by WhatsApp', 400);
+
+  const [order, settings] = await Promise.all([findOrder(idOrNumber), getSettings()]);
+  const words = settings.templates[template]?.whatsappBody;
+  if (!words) {
+    throw new AppError(`Write the WhatsApp text for "${TEMPLATE_INFO[template].label}" first (Notifications > Templates)`, 409);
+  }
+
+  const text = renderTemplate(words, valuesForOrder(order, settings));
+  const log = await NotificationLog.create({
+    order: order._id,
+    channel: 'whatsapp_link',
+    template,
+    recipient: order.customerSnapshot.phone,
+    body: text,
+    status: 'prepared', // the admin sends it from WhatsApp; the server cannot know if they did
+    attempts: 1,
+    createdBy: new mongoose.Types.ObjectId(actor.adminId),
+  });
+
+  return { link: buildWhatsappLink(order.customerSnapshot.phone, text), text, notificationId: String(log._id) };
 }

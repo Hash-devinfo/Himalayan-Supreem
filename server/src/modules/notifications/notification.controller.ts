@@ -37,3 +37,16 @@ export async function retry(req: Request<{ id: string }>, res: Response): Promis
   const notification = await notificationService.retryNotification(req.params.id, actorFrom(req));
   res.json({ success: true, notification });
 }
+
+
+// ── WhatsApp ──────────────────────────────────────────
+
+export async function whatsappOptions(req: Request<{ order: string }>, res: Response): Promise<void> {
+  res.json({ success: true, ...(await notificationService.whatsappOptions(req.params.order)) });
+}
+
+export async function prepareWhatsapp(req: Request<{ order: string; key: string }>, res: Response): Promise<void> {
+  const key = parseOrThrow(templateKeySchema, req.params.key);
+  const result = await notificationService.prepareWhatsapp(req.params.order, key, actorFrom(req));
+  res.json({ success: true, ...result });
+}
