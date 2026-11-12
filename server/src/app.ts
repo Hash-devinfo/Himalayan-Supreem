@@ -24,7 +24,7 @@ import { cartRoutes } from './modules/cart/cart.routes.js';
 import { checkoutRoutes } from './modules/checkout/checkout.routes.js';
 import { orderAdminRoutes } from './modules/orders/order.routes.js';
 import { orderPublicRoutes } from './modules/orders/orderPublic.routes.js';
-
+import { notificationAdminRoutes } from './modules/notifications/notification.routes.js';
 
 
 
@@ -76,7 +76,7 @@ app.use('/api/cart', cartRoutes);
 app.use('/api/checkout', checkoutRoutes);
 app.use('/api/admin/orders', orderAdminRoutes);
 app.use('/api/orders', orderPublicRoutes);
-
+app.use('/api/admin/notifications', notificationAdminRoutes);
 
 
 
