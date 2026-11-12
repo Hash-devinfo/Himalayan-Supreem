@@ -12,3 +12,8 @@ notificationAdminRoutes.use(requireAdmin);
 notificationAdminRoutes.get('/templates', notificationController.listTemplates);
 notificationAdminRoutes.put('/templates/:key', validateBody(updateTemplateSchema), notificationController.updateTemplate);
 notificationAdminRoutes.post('/templates/:key/preview', validateBody(previewTemplateSchema), notificationController.previewTemplate);
+
+
+// Message log (9B): ?order=ORD-...&status=failed&channel=email
+notificationAdminRoutes.get('/', notificationController.list);
+notificationAdminRoutes.post('/:id/retry', notificationController.retry);
