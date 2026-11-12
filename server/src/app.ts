@@ -25,7 +25,7 @@ import { checkoutRoutes } from './modules/checkout/checkout.routes.js';
 import { orderAdminRoutes } from './modules/orders/order.routes.js';
 import { orderPublicRoutes } from './modules/orders/orderPublic.routes.js';
 import { notificationAdminRoutes } from './modules/notifications/notification.routes.js';
-
+import { refundAdminRoutes } from './modules/refunds/refund.routes.js';
 
 
 
@@ -77,7 +77,7 @@ app.use('/api/checkout', checkoutRoutes);
 app.use('/api/admin/orders', orderAdminRoutes);
 app.use('/api/orders', orderPublicRoutes);
 app.use('/api/admin/notifications', notificationAdminRoutes);
-
+app.use('/api/admin/refunds', refundAdminRoutes);
 
 
 
