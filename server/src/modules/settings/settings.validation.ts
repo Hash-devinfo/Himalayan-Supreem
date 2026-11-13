@@ -48,7 +48,14 @@ export const updateSettingsSchema = z
         defaultLowStockThreshold: wholeDays('Default low-stock threshold', 0, 100_000).optional(),
       })
       .optional(),
+          risk: z
+      .strictObject({
+        refusalThreshold: wholeDays('Refusals for high risk', 1, 100).optional(),
+        dailyOrderLimit: wholeDays('Orders per phone per day', 1, 100).optional(),
+      })
+      .optional(),
   })
+  
   .refine((data) => Object.keys(data).length > 0, {
     message: 'Provide at least one setting to update',
   });

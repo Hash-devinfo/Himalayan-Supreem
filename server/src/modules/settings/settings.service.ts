@@ -71,7 +71,18 @@ export async function updateSettings(input: UpdateSettingsInput, actor: ActorCon
       );
     }
   }
-
+  // Fake-order protection rules: compare field by field (risk.refusalThreshold, ...)
+  if (input.risk) {
+    for (const [key, value] of Object.entries(input.risk)) {
+      if (value === undefined) continue;
+      const current = settings.risk[key as keyof typeof settings.risk];
+      if (current !== value) {
+        before[`risk.${key}`] = current;
+        after[`risk.${key}`] = value;
+        settings.set(`risk.${key}`, value);
+      }
+    }
+  }
   if (Object.keys(after).length === 0) {
     return settings;
   }

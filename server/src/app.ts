@@ -28,7 +28,7 @@ import { notificationAdminRoutes } from './modules/notifications/notification.ro
 import { reportAdminRoutes } from './modules/reports/report.routes.js';
 import { refundAdminRoutes } from './modules/refunds/refund.routes.js';
 import { pageAdminRoutes, pagePublicRoutes } from './modules/pages/page.routes.js';
-
+import { customerAdminRoutes } from './modules/customers/customer.routes.js';
 
 
 const app: Express = express();
@@ -82,7 +82,7 @@ app.use('/api/admin/refunds', refundAdminRoutes);
 app.use('/api/admin/reports', reportAdminRoutes);
 app.use('/api/pages', pagePublicRoutes);
 app.use('/api/admin/pages', pageAdminRoutes);
-
+app.use('/api/admin/customers', customerAdminRoutes);
 
 
 

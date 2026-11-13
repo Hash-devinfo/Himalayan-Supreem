@@ -1,6 +1,9 @@
 import { Schema, model, type HydratedDocument } from 'mongoose';
 import { NOTIFICATION_TEMPLATES, type NotificationTemplate } from '../constants/enums.js';
 import { DEFAULT_INVENTORY_RULES } from '../constants/inventory.js';
+import { DEFAULT_RISK_RULES } from '../constants/risk.js';
+
+
 
 // One document holds all store-wide settings. Its _id is always "store".
 export const SETTINGS_ID = 'store';
@@ -28,6 +31,12 @@ export interface InventorySettings {
   defaultLowStockThreshold: number;
 }
 
+// Fake-order protection rules (defaults in constants/risk.ts)
+export interface RiskSettings {
+  refusalThreshold: number;
+  dailyOrderLimit: number;
+}
+
 export interface ISetting {
   _id: string;
   store: StoreInfo;
@@ -36,6 +45,7 @@ export interface ISetting {
   defaultPackagingCost?: number; // PKR, for profit reports
   inventory: InventorySettings;
   templates: MessageTemplates;
+    risk: RiskSettings;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -76,6 +86,14 @@ const inventorySettingsSchema = new Schema<InventorySettings>(
   { _id: false }
 );
 
+const riskSettingsSchema = new Schema<RiskSettings>(
+  {
+    refusalThreshold: { type: Number, min: 1, max: 100, validate: wholeNumber, default: DEFAULT_RISK_RULES.refusalThreshold },
+    dailyOrderLimit: { type: Number, min: 1, max: 100, validate: wholeNumber, default: DEFAULT_RISK_RULES.dailyOrderLimit },
+  },
+  { _id: false }
+);
+
 // One empty template per message type: { orderPlaced: {}, confirmed: {}, ... }
 const templatesSchema = new Schema<MessageTemplates>(
   Object.fromEntries(NOTIFICATION_TEMPLATES.map((key) => [key, { type: messageTemplateSchema, default: () => ({}) }])),
@@ -96,6 +114,7 @@ const settingSchema = new Schema<ISetting>(
     freeDeliveryThreshold: { type: Number, min: 0, validate: wholeNumber },
     defaultPackagingCost: { type: Number, min: 0, validate: wholeNumber },
     inventory: { type: inventorySettingsSchema, default: () => ({}) },
+        risk: { type: riskSettingsSchema, default: () => ({}) },
     templates: { type: templatesSchema, default: () => ({}) },
   },
   {

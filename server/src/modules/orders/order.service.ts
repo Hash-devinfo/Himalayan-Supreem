@@ -18,6 +18,7 @@ import {
   statusLabel,
 } from "./orderStatus.js";
 import { notifyOrder } from "../notifications/notification.service.js";
+import { riskForPhone, riskForPhones } from '../customers/risk.service.js';
 import type {
   CancelOrderInput,
   DeclineCancellationInput,
@@ -99,7 +100,8 @@ export async function listOrders(query: ListOrdersQuery) {
       .lean(),
     Order.countDocuments(filter),
   ]);
-
+  // Risk badge for each order's phone number (one query for the whole page)
+  const risk = await riskForPhones(orders.map((o) => o.customerSnapshot.phone));
   return {
     orders: orders.map((o) => ({
       id: String(o._id),
@@ -117,6 +119,7 @@ export async function listOrders(query: ListOrdersQuery) {
         ...o.flags,
         cancellationRequested: o.cancellation?.requestStatus === "requested",
       },
+            risk: risk.get(o.customerSnapshot.phone)?.level ?? 'normal',
     })),
     total,
     page: query.page,
@@ -131,6 +134,7 @@ export async function getOrder(idOrNumber: string) {
   return {
     order,
     statusLabel: statusLabel(order.status),
+    risk: await riskForPhone(phone),
     contact: {
       phone: formatPkMobile(phone),
       callLink: `tel:${phone}`,

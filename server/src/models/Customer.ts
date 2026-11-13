@@ -1,4 +1,4 @@
-import { Schema, model, type HydratedDocument } from 'mongoose';
+import { Schema, model, type HydratedDocument, type Types } from 'mongoose';
 import { VERIFIED_VIA, type VerifiedVia } from '../constants/enums.js';
 
 // One customer per phone number. Guests are customers too: no account or password needed.
@@ -16,6 +16,11 @@ export interface ICustomer {
   phoneVerified: boolean;
   verifiedVia?: VerifiedVia;
   stats: CustomerStats;
+  // Fake-order protection (requirements 4.6): a blocked number cannot order online
+  isBlocked: boolean;
+  blockedReason?: string;
+  blockedAt?: Date;
+  blockedBy?: Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -40,12 +45,18 @@ const customerSchema = new Schema<ICustomer>(
     phoneVerified: { type: Boolean, default: false },
     verifiedVia: { type: String, enum: VERIFIED_VIA },
     stats: { type: statsSchema, default: () => ({}) },
+    isBlocked: { type: Boolean, default: false },
+    blockedReason: { type: String, trim: true, maxlength: 500 },
+    blockedAt: { type: Date },
+    blockedBy: { type: Schema.Types.ObjectId, ref: 'Admin' },
   },
   {
     timestamps: true,
     toJSON: { versionKey: false },
   }
 );
+
+customerSchema.index({ isBlocked: 1 });
 
 const Customer = model<ICustomer>('Customer', customerSchema);
 
