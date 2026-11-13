@@ -2,6 +2,7 @@ import type { Request, Response } from 'express';
 import { parseOrThrow } from '../../middleware/validate.js';
 import { sendCsv } from '../../utils/csv.js';
 import {
+    analyticsQuerySchema,
   cancellationsQuerySchema,
   fulfillmentQuerySchema,
   inventoryQuerySchema,
@@ -14,6 +15,7 @@ import * as stockReportService from './stockReport.service.js';
 import * as fulfillmentReportService from './fulfillmentReport.service.js';
 import * as cancellationsReportService from './cancellationsReport.service.js';
 import * as reportCsv from './reportCsv.js';
+import * as analyticsReportService from './analyticsReport.service.js';
 
 // Every report: JSON by default, or a CSV download with &format=csv
 
@@ -49,5 +51,13 @@ export async function cancellations(req: Request, res: Response): Promise<void> 
   const query = parseOrThrow(cancellationsQuerySchema, req.query);
   const report = await cancellationsReportService.cancellationsReport(query);
   if (query.format === 'csv') return sendCsv(res, reportCsv.cancellationsCsv(report));
+  res.json({ success: true, ...report });
+}
+
+
+export async function analytics(req: Request, res: Response): Promise<void> {
+  const query = parseOrThrow(analyticsQuerySchema, req.query);
+  const report = await analyticsReportService.analyticsReport(query);
+  if (query.format === 'csv') return sendCsv(res, reportCsv.analyticsCsv(report));
   res.json({ success: true, ...report });
 }

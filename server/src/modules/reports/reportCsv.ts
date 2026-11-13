@@ -5,6 +5,11 @@ import type { profitReport } from './profit.service.js';
 import type { inventoryReport } from './stockReport.service.js';
 import type { fulfillmentReport } from './fulfillmentReport.service.js';
 import type { cancellationsReport } from './cancellationsReport.service.js';
+import type { analyticsReport } from './analyticsReport.service.js';
+
+
+
+
 
 // Turns each report (the same data the JSON shows) into a CSV file
 
@@ -13,6 +18,7 @@ type ProfitReport = Awaited<ReturnType<typeof profitReport>>;
 type InventoryReport = Awaited<ReturnType<typeof inventoryReport>>;
 type FulfillmentReport = Awaited<ReturnType<typeof fulfillmentReport>>;
 type CancellationsReport = Awaited<ReturnType<typeof cancellationsReport>>;
+type AnalyticsReport = Awaited<ReturnType<typeof analyticsReport>>;
 
 // "deliveredOrders" -> "Delivered orders", "codHeldAmount" -> "COD held amount"
 function labelFor(key: string): string {
@@ -181,6 +187,24 @@ export function cancellationsCsv(r: CancellationsReport) {
         header: ['Order', 'Status', 'Reason', 'Amount', 'Recorded on'],
         rows: r.refunds.open.map((x) => [x.orderNumber, x.status, x.reason, x.amount, x.recordedOn]),
       },
+      definitionsSection(r.definitions),
+    ]),
+  };
+}
+
+
+// ── Website analytics ─────────────────────────────────
+
+export function analyticsCsv(r: AnalyticsReport) {
+  return {
+    filename: fileName('website-analytics', r.range),
+    csv: buildCsv(meta('Website analytics', r.range, 'Anonymous visitors; search engines not counted'), [
+      summarySection(r.summary),
+      { title: 'Funnel', header: ['Step', 'Visitors', '% of product viewers'], rows: r.funnel.map((f) => [f.step, f.visitors, f.percentOfViewers]) },
+      { title: 'Most viewed products', header: ['Product', 'Views', 'Visitors'], rows: r.topProducts.map((p) => [p.product, p.views, p.visitors]) },
+      { title: 'Most added to cart', header: ['Product (size)', 'SKU', 'Adds'], rows: r.topAddedToCart.map((a) => [a.product, a.sku, a.adds]) },
+      { title: 'Top searches', header: ['Search', 'Times', 'Times with 0 results', 'Average results'], rows: r.topSearches.map((s) => [s.search, s.searches, s.zeroResults, s.avgResults]) },
+      { title: 'Traffic sources (first visit)', header: ['Source', 'Visitors', 'Ordered', 'Order %'], rows: r.trafficSources.map((t) => [t.source, t.visitors, t.ordered, t.orderPercent]) },
       definitionsSection(r.definitions),
     ]),
   };

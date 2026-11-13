@@ -23,3 +23,7 @@ reportAdminRoutes.get('/fulfillment', reportController.fulfillment);
 
 // Cancellations by type and reason; refunds by reason, method and product; open refunds
 reportAdminRoutes.get('/cancellations', reportController.cancellations);
+
+
+// Website analytics: visitors, funnel, top products and searches, traffic sources, abandoned carts
+reportAdminRoutes.get('/analytics', reportController.analytics);
