@@ -1,36 +1,45 @@
-import mongoose, { type Types } from 'mongoose';
-import Variant from '../../models/Variant.js';
-import Batch from '../../models/Batch.js';
-import StockMovement from '../../models/StockMovement.js';
-import { DEFAULT_LOW_STOCK_THRESHOLD, EXPIRY_WARNING_DAYS } from '../../constants/inventory.js';
-import { isPastSellCutoff } from '../inventory/expiry.js';
-import { getExpiryAlerts, getLowStockAlerts } from '../inventory/inventory.service.js';
-import { resolveRange } from './reportRange.js';
-import type { InventoryQuery } from './report.validation.js';
+import mongoose, { type Types } from "mongoose";
+import Variant from "../../models/Variant.js";
+import Batch from "../../models/Batch.js";
+import StockMovement from "../../models/StockMovement.js";
+import { inventoryRules } from "../settings/inventoryRules.js";
+import { isPastSellCutoff } from "../inventory/expiry.js";
+import {
+  getExpiryAlerts,
+  getLowStockAlerts,
+} from "../inventory/inventory.service.js";
+import { resolveRange } from "./reportRange.js";
+import type { InventoryQuery } from "./report.validation.js";
 
 export const INVENTORY_DEFINITIONS = {
-  onHand: 'Units physically in active batches right now, including batches that have stopped selling.',
-  sellable: 'Units in batches that can still be sold (not within the stop-selling days before expiry).',
-  reserved: 'Units held for orders that are not packed yet.',
-  available: 'Sellable - reserved: what customers can still buy.',
-  stockValue: 'On-hand units x batch cost (or the size cost price). Units with no cost entered are not counted.',
-  expiringSoon: `Batches still on sale that expire within ${EXPIRY_WARNING_DAYS} days.`,
-  stoppedSelling: 'Batches past their stop-selling date but still holding stock: write these off.',
-  movements: 'Every stock change in the period, totalled by type (Pakistan dates).',
+  onHand:
+    "Units physically in active batches right now, including batches that have stopped selling.",
+  sellable:
+    "Units in batches that can still be sold (not within the stop-selling days before expiry).",
+  reserved: "Units held for orders that are not packed yet.",
+  available: "Sellable - reserved: what customers can still buy.",
+  stockValue:
+    "On-hand units x batch cost (or the size cost price). Units with no cost entered are not counted.",
+  expiringSoon:
+    "Batches still on sale that expire within the expiry warning days (Settings, default 60).",
+  stoppedSelling:
+    "Batches past their stop-selling date but still holding stock: write these off.",
+  movements:
+    "Every stock change in the period, totalled by type (Pakistan dates).",
 };
 
 const MOVEMENT_LABELS: Record<string, string> = {
-  received: 'Received',
-  reserved: 'Reserved by orders',
-  released: 'Released (order cancelled)',
-  packed: 'Packed (left stock)',
-  unpacked: 'Unpacked (back to stock)',
-  adjusted_in: 'Adjusted in',
-  adjusted_out: 'Adjusted out',
-  damaged: 'Damaged',
-  expired: 'Expired',
-  return_restocked: 'Returned and restocked',
-  return_written_off: 'Written off (returns and refunds)',
+  received: "Received",
+  reserved: "Reserved by orders",
+  released: "Released (order cancelled)",
+  packed: "Packed (left stock)",
+  unpacked: "Unpacked (back to stock)",
+  adjusted_in: "Adjusted in",
+  adjusted_out: "Adjusted out",
+  damaged: "Damaged",
+  expired: "Expired",
+  return_restocked: "Returned and restocked",
+  return_written_off: "Written off (returns and refunds)",
 };
 
 export async function inventoryReport(query: InventoryQuery) {
@@ -39,11 +48,17 @@ export async function inventoryReport(query: InventoryQuery) {
 
   const [stock, expiry, lowStock, movements] = await Promise.all([
     stockNow(now),
-    getExpiryAlerts(EXPIRY_WARNING_DAYS),
+    getExpiryAlerts(inventoryRules().expiryWarningDays),
     getLowStockAlerts(),
     StockMovement.aggregate<{ _id: string; units: number; entries: number }>([
       { $match: { createdAt: { $gte: range.start, $lt: range.end } } },
-      { $group: { _id: '$type', units: { $sum: '$quantity' }, entries: { $sum: 1 } } },
+      {
+        $group: {
+          _id: "$type",
+          units: { $sum: "$quantity" },
+          entries: { $sum: 1 },
+        },
+      },
       { $sort: { _id: 1 } },
     ]),
   ]);
@@ -66,7 +81,12 @@ export async function inventoryReport(query: InventoryQuery) {
     lowStock,
     expiringSoon: expiry.expiringSoon,
     stoppedSelling: expiry.stoppedSelling,
-    movements: movements.map((m) => ({ type: m._id, label: MOVEMENT_LABELS[m._id] ?? m._id, units: m.units, entries: m.entries })),
+    movements: movements.map((m) => ({
+      type: m._id,
+      label: MOVEMENT_LABELS[m._id] ?? m._id,
+      units: m.units,
+      entries: m.entries,
+    })),
     sizesWithoutCost: stock.sizesWithoutCost,
     definitions: INVENTORY_DEFINITIONS,
   };
@@ -74,19 +94,27 @@ export async function inventoryReport(query: InventoryQuery) {
 
 // Every active size with its stock right now, worked out from its batches
 async function stockNow(now: Date) {
-  const variantFilter: Record<string, unknown> = { status: 'active' };
+  const variantFilter: Record<string, unknown> = { status: "active" };
   const variants = await Variant.find(variantFilter)
-    .select('product sku label costPrice reservedQty availableQty lowStockThreshold')
-    .populate<{ product: { _id: Types.ObjectId; name: string; status: string } | null }>('product', 'name status')
+    .select(
+      "product sku label costPrice reservedQty availableQty lowStockThreshold",
+    )
+    .populate<{
+      product: { _id: Types.ObjectId; name: string; status: string } | null;
+    }>("product", "name status")
     .lean();
-  const live = variants.filter((v) => v.product && v.product.status !== 'archived');
+  const live = variants.filter(
+    (v) => v.product && v.product.status !== "archived",
+  );
 
   const batchFilter: Record<string, unknown> = {
     variant: mongoose.trusted({ $in: live.map((v) => v._id) }),
-    status: 'active',
+    status: "active",
     quantityRemaining: mongoose.trusted({ $gt: 0 }),
   };
-  const batches = await Batch.find(batchFilter).select('variant quantityRemaining expiryDate unitCost').lean();
+  const batches = await Batch.find(batchFilter)
+    .select("variant quantityRemaining expiryDate unitCost")
+    .lean();
 
   const byVariant = new Map<string, typeof batches>();
   for (const b of batches) {
@@ -111,10 +139,12 @@ async function stockNow(now: Date) {
       if (cost === undefined) costMissing = true;
       else rowValue += cost * b.quantityRemaining;
     }
-    if (costMissing) sizesWithoutCost.push(`${v.sku} (${v.product!.name} ${v.label})`);
+    if (costMissing)
+      sizesWithoutCost.push(`${v.sku} (${v.product!.name} ${v.label})`);
     value += rowValue;
 
-    const threshold = v.lowStockThreshold ?? DEFAULT_LOW_STOCK_THRESHOLD;
+    const threshold =
+      v.lowStockThreshold ?? inventoryRules().defaultLowStockThreshold;
     return {
       variantId: String(v._id),
       product: v.product!.name,
@@ -131,6 +161,8 @@ async function stockNow(now: Date) {
     };
   });
 
-  rows.sort((a, b) => a.product.localeCompare(b.product) || a.sku.localeCompare(b.sku));
+  rows.sort(
+    (a, b) => a.product.localeCompare(b.product) || a.sku.localeCompare(b.sku),
+  );
   return { rows, value, sizesWithoutCost };
 }

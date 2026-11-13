@@ -8,7 +8,7 @@ import {
   rupees,
 } from "../../utils/zodHelpers.js";
 import { startOfTodayPkt } from "../../utils/dates.js";
-import { STOP_SELLING_DAYS_BEFORE_EXPIRY } from "../../constants/inventory.js";
+import { inventoryRules } from "../settings/inventoryRules.js";
 import { sellableExpiryCutoff } from "./expiry.js";
 
 const batchNumber = z
@@ -53,7 +53,11 @@ export const receiveBatchSchema = z
     path: ["expiryDate"],
   })
   .refine((data) => data.expiryDate > sellableExpiryCutoff(), {
-    message: `This batch expires within ${STOP_SELLING_DAYS_BEFORE_EXPIRY} days, so it cannot be sold. Stock stops selling ${STOP_SELLING_DAYS_BEFORE_EXPIRY} days before expiry.`,
+        // A function, so the message always shows the CURRENT setting
+    error: () => {
+      const days = inventoryRules().sellByCutoffDays;
+      return `This batch expires within ${days} days, so it cannot be sold. Stock stops selling ${days} days before expiry.`;
+    },
     path: ["expiryDate"],
   });
 

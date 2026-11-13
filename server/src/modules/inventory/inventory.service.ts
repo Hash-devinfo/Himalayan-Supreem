@@ -3,7 +3,7 @@ import Batch, { type BatchDocument } from "../../models/Batch.js";
 import StockMovement from "../../models/StockMovement.js";
 import Variant from "../../models/Variant.js";
 import "../../models/Admin.js"; // registers the Admin model so stock history can show who made each change
-import { DEFAULT_LOW_STOCK_THRESHOLD } from "../../constants/inventory.js";
+import { inventoryRules } from "../settings/inventoryRules.js";
 import AppError from "../../utils/AppError.js";
 import {
   addDays,
@@ -396,29 +396,31 @@ export interface ExpiryAlert {
 // expiringSoon: still on sale, but expiring within the warning window (sell or discount these).
 // stoppedSelling: past the stop-selling date (or expired) but still on the shelf (write these off).
 export async function getExpiryAlerts(
-  days: number
+  days: number,
 ): Promise<{ expiringSoon: ExpiryAlert[]; stoppedSelling: ExpiryAlert[] }> {
   const now = new Date();
   const until = addDays(startOfTodayPkt(now), days + 1);
 
   const filter: Record<string, unknown> = {
-    status: 'active',
+    status: "active",
     quantityRemaining: mongoose.trusted({ $gt: 0 }),
     expiryDate: mongoose.trusted({ $lt: until }),
   };
 
   const batches = await Batch.find(filter)
-    .populate<{ variant: { sku: string; label: string } }>('variant', 'sku label')
-    .populate<{ product: { name: string } }>('product', 'name')
+    .populate<{
+      variant: { sku: string; label: string };
+    }>("variant", "sku label")
+    .populate<{ product: { name: string } }>("product", "name")
     .sort({ expiryDate: 1 });
 
   const alerts = batches.map((batch) => ({
     alert: {
       batchId: batch.id,
       batchNumber: batch.batchNumber,
-      product: batch.product?.name ?? '(deleted product)',
-      sku: batch.variant?.sku ?? '',
-      label: batch.variant?.label ?? '',
+      product: batch.product?.name ?? "(deleted product)",
+      sku: batch.variant?.sku ?? "",
+      label: batch.variant?.label ?? "",
       quantityRemaining: batch.quantityRemaining,
       expiryDate: formatPktDate(batch.expiryDate),
       stopsSellingOn: formatPktDate(stopSellingDate(batch.expiryDate)),
@@ -450,7 +452,12 @@ export async function getLowStockAlerts(): Promise<LowStockAlert[]> {
     $expr: mongoose.trusted({
       $lte: [
         "$availableQty",
-        { $ifNull: ["$lowStockThreshold", DEFAULT_LOW_STOCK_THRESHOLD] },
+        {
+          $ifNull: [
+            "$lowStockThreshold",
+            inventoryRules().defaultLowStockThreshold,
+          ],
+        },
       ],
     }),
   };
@@ -473,6 +480,6 @@ export async function getLowStockAlerts(): Promise<LowStockAlert[]> {
       label: variant.label,
       availableQty: variant.availableQty,
       reservedQty: variant.reservedQty,
-      threshold: variant.lowStockThreshold ?? DEFAULT_LOW_STOCK_THRESHOLD,
+      threshold: variant.lowStockThreshold ?? inventoryRules().defaultLowStockThreshold,
     }));
 }

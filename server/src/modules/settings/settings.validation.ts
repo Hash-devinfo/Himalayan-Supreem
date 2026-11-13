@@ -15,6 +15,13 @@ export const pkMobile = (label: string) =>
       return normalized;
     });
 
+const wholeDays = (label: string, min: number, max: number) =>
+  z
+    .number(`${label} must be a number`)
+    .int(`${label} must be a whole number`)
+    .min(min, `${label} must be at least ${min}`)
+    .max(max, `${label} cannot be more than ${max}`);
+
 export const updateSettingsSchema = z
   .strictObject({
     store: z
@@ -34,6 +41,13 @@ export const updateSettingsSchema = z
     // null turns free delivery off
     freeDeliveryThreshold: rupees('Free delivery threshold').nullable().optional(),
     defaultPackagingCost: rupees('Default packaging cost').optional(),
+    inventory: z
+      .strictObject({
+        sellByCutoffDays: wholeDays('Stop-selling days before expiry', 0, 90).optional(),
+        expiryWarningDays: wholeDays('Expiry warning days', 1, 365).optional(),
+        defaultLowStockThreshold: wholeDays('Default low-stock threshold', 0, 100_000).optional(),
+      })
+      .optional(),
   })
   .refine((data) => Object.keys(data).length > 0, {
     message: 'Provide at least one setting to update',

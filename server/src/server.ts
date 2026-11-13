@@ -2,9 +2,11 @@ import env from './config/env.js';
 import { connectDB, disconnectDB } from './config/db.js';
 import app from './app.js';
 import { startScheduler, stopScheduler } from './jobs/scheduler.js';
+import { loadInventoryRules } from './modules/settings/inventoryRules.js';
 
 await connectDB();
-
+const rules = await loadInventoryRules(); // before any request is served
+console.log('Inventory rules:', rules);
 const server = app.listen(env.port, () => {
   console.log(`Server running in ${env.nodeEnv} mode on http://localhost:${env.port}`);
   startScheduler();

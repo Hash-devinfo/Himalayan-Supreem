@@ -2,7 +2,7 @@ import mongoose from 'mongoose';
 import Batch from '../models/Batch.js';
 import StockMovement from '../models/StockMovement.js';
 import Variant from '../models/Variant.js';
-import { EXPIRY_WARNING_DAYS } from '../constants/inventory.js';
+import { inventoryRules } from '../modules/settings/inventoryRules.js';
 import { formatPktDate } from '../utils/dates.js';
 import { recordAudit } from '../modules/audit/audit.service.js';
 import { recalculateVariantStock } from '../modules/inventory/stock.service.js';
@@ -106,7 +106,7 @@ export async function runDailyInventoryCheck(now: Date = new Date()): Promise<Da
 
   // 3. Counts for the alerts, so the morning log shows what needs attention
   const [expiry, lowStock] = await Promise.all([
-    getExpiryAlerts(EXPIRY_WARNING_DAYS),
+        getExpiryAlerts(inventoryRules().expiryWarningDays),
     getLowStockAlerts(),
   ]);
 
