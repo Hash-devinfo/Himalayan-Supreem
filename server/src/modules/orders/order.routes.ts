@@ -17,6 +17,7 @@ import {
   returnOrderSchema,
   shipOrderSchema,
 } from "./fulfillment.validation.js";
+import { updateContactSchema } from "./contact.validation.js";
 
 // Admin: /api/admin/orders  (:id = database ID or order number)
 export const orderAdminRoutes = Router();
@@ -95,3 +96,11 @@ orderAdminRoutes.post(
   validateBody(declineCancellationSchema),
   orderController.declineCancellationRequest,
 );
+
+// Address and contact before packing; invoice (12C)
+orderAdminRoutes.patch(
+  "/:id/contact",
+  validateBody(updateContactSchema),
+  orderController.updateContact,
+);
+orderAdminRoutes.get("/:id/invoice", orderController.invoice);

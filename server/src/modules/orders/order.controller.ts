@@ -14,7 +14,9 @@ import {
 } from './order.validation.js';
 import type { PackOrderInput, UnpackOrderInput } from './packing.validation.js';
 import type { DeliverOrderInput, FailDeliveryInput, RemitInput, ReturnOrderInput, ShipOrderInput } from './fulfillment.validation.js';
-
+import * as contactService from './contact.service.js';
+import * as invoiceService from './invoice.service.js';
+import type { UpdateContactInput } from './contact.validation.js';
 
 
 type IdParams = { id: string };
@@ -106,4 +108,18 @@ export async function recordCancellationRequest(req: Request<IdParams>, res: Res
 export async function declineCancellationRequest(req: Request<IdParams>, res: Response): Promise<void> {
   const result = await orderService.declineCancellationRequest(req.params.id, req.body as DeclineCancellationInput, actorFrom(req));
   res.json({ success: true, ...result });
+}
+
+
+// ── Contact and address (12C) ─────────────────────────
+
+export async function updateContact(req: Request<IdParams>, res: Response): Promise<void> {
+  const result = await contactService.updateContact(req.params.id, req.body as UpdateContactInput, actorFrom(req));
+  res.json({ success: true, ...result });
+}
+
+// ── Invoice (12C) ─────────────────────────────────────
+
+export async function invoice(req: Request<IdParams>, res: Response): Promise<void> {
+  res.json({ success: true, ...(await invoiceService.getInvoice(req.params.id)) });
 }

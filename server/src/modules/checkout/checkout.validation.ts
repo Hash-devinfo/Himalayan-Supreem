@@ -12,7 +12,7 @@ const optionalText = (label: string, max: number) =>
     .optional()
     .transform((value) => (value ? value : undefined));
 
-const addressSchema = z
+export const addressSchema = z
   .strictObject({
     line1: z.string('Address is required').trim().min(5, 'Please enter your full address (house, street)').max(200, 'Address cannot be longer than 200 characters'),
     line2: optionalText('Address line 2', 200),
