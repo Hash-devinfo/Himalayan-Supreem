@@ -9,3 +9,7 @@ export const MAX_CART_LINES = 30;
 
 // A cart with no activity for this many days is deleted automatically.
 export const CART_RETENTION_DAYS = 30;
+
+// A cart with items and no activity for this many hours counts as "abandoned" in reports.
+// PLACEHOLDER. Customers are never contacted about it (requirements 3.2); if they come back, it reopens.
+export const ABANDONED_AFTER_HOURS = 24;

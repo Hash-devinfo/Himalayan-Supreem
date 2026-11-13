@@ -6,7 +6,7 @@ import type { inventoryReport } from './stockReport.service.js';
 import type { fulfillmentReport } from './fulfillmentReport.service.js';
 import type { cancellationsReport } from './cancellationsReport.service.js';
 import type { analyticsReport } from './analyticsReport.service.js';
-
+import type { riskReport } from './riskReport.service.js';
 
 
 
@@ -19,6 +19,9 @@ type InventoryReport = Awaited<ReturnType<typeof inventoryReport>>;
 type FulfillmentReport = Awaited<ReturnType<typeof fulfillmentReport>>;
 type CancellationsReport = Awaited<ReturnType<typeof cancellationsReport>>;
 type AnalyticsReport = Awaited<ReturnType<typeof analyticsReport>>;
+type RiskReport = Awaited<ReturnType<typeof riskReport>>;
+
+
 
 // "deliveredOrders" -> "Delivered orders", "codHeldAmount" -> "COD held amount"
 function labelFor(key: string): string {
@@ -205,6 +208,29 @@ export function analyticsCsv(r: AnalyticsReport) {
       { title: 'Most added to cart', header: ['Product (size)', 'SKU', 'Adds'], rows: r.topAddedToCart.map((a) => [a.product, a.sku, a.adds]) },
       { title: 'Top searches', header: ['Search', 'Times', 'Times with 0 results', 'Average results'], rows: r.topSearches.map((s) => [s.search, s.searches, s.zeroResults, s.avgResults]) },
       { title: 'Traffic sources (first visit)', header: ['Source', 'Visitors', 'Ordered', 'Order %'], rows: r.trafficSources.map((t) => [t.source, t.visitors, t.ordered, t.orderPercent]) },
+      definitionsSection(r.definitions),
+    ]),
+  };
+}
+
+
+// ── Risk overview ─────────────────────────────────────
+
+export function riskCsv(r: RiskReport) {
+  return {
+    filename: fileName('risk-overview', r.range),
+    csv: buildCsv(meta('Risk overview (refusals and cancellations)', r.range), [
+      summarySection(r.summary),
+      {
+        title: 'By city',
+        header: ['City', 'Province', 'Orders', 'Delivered', 'Refused', 'Cancelled', 'Refusal %'],
+        rows: r.byCity.map((c) => [c.city, c.province, c.orders, c.delivered, c.refused, c.cancelled, c.refusalPercent]),
+      },
+      {
+        title: 'Phone numbers with refusals or cancellations',
+        header: ['Phone', 'Name', 'Orders', 'Delivered', 'Refused', 'Cancelled', 'Risk level'],
+        rows: r.phones.map((p) => [p.phone, p.name, p.orders, p.delivered, p.refused, p.cancelled, p.riskLevel]),
+      },
       definitionsSection(r.definitions),
     ]),
   };

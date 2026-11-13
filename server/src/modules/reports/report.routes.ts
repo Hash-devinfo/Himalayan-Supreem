@@ -17,13 +17,13 @@ reportAdminRoutes.get("/profit", reportController.profit);
 reportAdminRoutes.get("/inventory", reportController.inventory);
 
 // Orders by status, courier performance, failures, COD held and remitted
-reportAdminRoutes.get('/fulfillment', reportController.fulfillment);
-
-
+reportAdminRoutes.get("/fulfillment", reportController.fulfillment);
 
 // Cancellations by type and reason; refunds by reason, method and product; open refunds
-reportAdminRoutes.get('/cancellations', reportController.cancellations);
-
+reportAdminRoutes.get("/cancellations", reportController.cancellations);
 
 // Website analytics: visitors, funnel, top products and searches, traffic sources, abandoned carts
-reportAdminRoutes.get('/analytics', reportController.analytics);
+reportAdminRoutes.get("/analytics", reportController.analytics);
+
+// Risk overview: refusals and cancellations by city and by phone number
+reportAdminRoutes.get("/risk", reportController.risk);

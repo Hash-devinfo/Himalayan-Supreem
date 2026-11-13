@@ -129,7 +129,15 @@ async function withRetry<T>(action: () => Promise<T>): Promise<T> {
 
 export async function findActiveCart(sessionId: string | undefined): Promise<CartDocument | null> {
   if (!sessionId) return null;
-  return Cart.findOne({ sessionId, status: 'active' });
+  // An "abandoned" cart is still the customer's cart: if they come back, it simply reopens
+  const filter: Record<string, unknown> = { sessionId, status: mongoose.trusted({ $in: ['active', 'abandoned'] }) };
+  const cart = await Cart.findOne(filter);
+  if (cart?.status === 'abandoned') {
+    cart.status = 'active';
+    touch(cart); // coming back counts as activity, so tonight's job does not mark it again
+    await cart.save();
+  }
+  return cart;
 }
 
 function touch(cart: CartDocument): void {

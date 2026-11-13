@@ -81,3 +81,8 @@ export const analyticsQuerySchema = checkRange(
 );
 
 export type AnalyticsQuery = z.infer<typeof analyticsQuerySchema>;
+
+
+export const riskQuerySchema = checkRange(z.strictObject({ ...dateRangeQuery }));
+
+export type RiskQuery = z.infer<typeof riskQuerySchema>;
