@@ -59,7 +59,7 @@ interface SellableSize {
 }
 
 // A size can be bought only if it is active AND its product is published.
-async function loadSellable(variantIds: (string | Types.ObjectId)[]): Promise<Map<string, SellableSize>> {
+export async function loadSellable(variantIds: (string | Types.ObjectId)[]): Promise<Map<string, SellableSize>> {
   const result = new Map<string, SellableSize>();
   if (variantIds.length === 0) return result;
 

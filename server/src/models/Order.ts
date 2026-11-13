@@ -4,6 +4,7 @@ import {
   CANCELLATION_SOURCES,
   CONTACT_OUTCOMES,
   COURIERS,
+   ORDER_CHANNELS,
   ORDER_STATUSES,
   PAYMENT_METHODS,
   PAYMENT_STATUSES,
@@ -15,6 +16,7 @@ import {
   type ContactOutcome,
   type Courier,
   type OrderStatus,
+    type OrderChannel,
   type PaymentMethod,
   type PaymentStatus,
   type Province,
@@ -138,6 +140,8 @@ export interface OrderSource {
   utmSource?: string;
   utmMedium?: string;
   utmCampaign?: string;
+   channel: OrderChannel; // website, or how a manual order reached the admin
+  createdBy?: Types.ObjectId;
 }
 
 export interface IOrder {
@@ -312,6 +316,8 @@ const flagsSchema = new Schema<OrderFlags>(
 
 const sourceSchema = new Schema<OrderSource>(
   {
+        channel: { type: String, enum: ORDER_CHANNELS, default: 'website' },
+    createdBy: { type: Schema.Types.ObjectId, ref: 'Admin' },
     sessionId: { type: String },
     referrer: { type: String, trim: true, maxlength: 500 },
     utmSource: { type: String, trim: true, maxlength: 100 },

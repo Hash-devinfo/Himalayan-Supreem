@@ -2,6 +2,8 @@ import type { Request, Response } from 'express';
 import * as orderService from './order.service.js';
 import * as packingService from './packing.service.js';
 import * as fulfillmentService from './fulfillment.service.js';
+import * as manualOrderService from './manualOrder.service.js';
+import type { ManualOrderInput } from './manualOrder.validation.js';
 import { actorFrom } from '../../middleware/requireAdmin.js';
 import { parseOrThrow } from '../../middleware/validate.js';
 import {
@@ -122,4 +124,12 @@ export async function updateContact(req: Request<IdParams>, res: Response): Prom
 
 export async function invoice(req: Request<IdParams>, res: Response): Promise<void> {
   res.json({ success: true, ...(await invoiceService.getInvoice(req.params.id)) });
+}
+
+
+// ── Manual order (13B) ────────────────────────────────
+
+export async function createManual(req: Request, res: Response): Promise<void> {
+  const result = await manualOrderService.createManualOrder(req.body as ManualOrderInput, actorFrom(req));
+  res.status(201).json({ success: true, ...result });
 }

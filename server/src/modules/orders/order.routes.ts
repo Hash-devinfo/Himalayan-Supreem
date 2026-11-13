@@ -18,6 +18,7 @@ import {
   shipOrderSchema,
 } from "./fulfillment.validation.js";
 import { updateContactSchema } from "./contact.validation.js";
+import { manualOrderSchema } from './manualOrder.validation.js';
 
 // Admin: /api/admin/orders  (:id = database ID or order number)
 export const orderAdminRoutes = Router();
@@ -104,3 +105,6 @@ orderAdminRoutes.patch(
   orderController.updateContact,
 );
 orderAdminRoutes.get("/:id/invoice", orderController.invoice);
+
+// Manual order for a WhatsApp or phone customer (13B)
+orderAdminRoutes.post('/manual', validateBody(manualOrderSchema), orderController.createManual);

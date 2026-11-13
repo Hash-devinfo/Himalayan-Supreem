@@ -57,7 +57,9 @@ export const ORDER_STATUSES = [
   'refunded',
 ] as const;
 export type OrderStatus = (typeof ORDER_STATUSES)[number];
-
+// Where an order came from: the website, or entered by the admin (manual order, requirements 4.3)
+export const ORDER_CHANNELS = ['website', 'whatsapp', 'phone', 'other'] as const;
+export type OrderChannel = (typeof ORDER_CHANNELS)[number];
 export const CONTACT_OUTCOMES = [
   'no_answer',
   'busy',

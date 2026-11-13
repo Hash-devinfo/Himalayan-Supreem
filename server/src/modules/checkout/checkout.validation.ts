@@ -21,7 +21,7 @@ export const addressSchema = z
     cityId: objectId('City').optional(),
     cityName: z.string().trim().min(2, 'City name must be at least 2 characters').max(60, 'City name cannot be longer than 60 characters').optional(),
     province: z.enum(PROVINCES, `Province must be one of: ${PROVINCES.join(', ')}`).optional(),
-  })
+  },'Delivery address is required')
   .refine((data) => Boolean(data.cityId) !== Boolean(data.cityName && data.province), {
     message: 'Choose a city from the list, or type your city and choose its province',
     path: ['cityId'],
