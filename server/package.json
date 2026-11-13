@@ -10,7 +10,9 @@
     "start": "node dist/server.js",
     "create-admin": "tsx src/scripts/createAdmin.ts",
     "seed:cities": "tsx src/scripts/seedCities.ts",
-    "reset-admin-password": "tsx src/scripts/resetAdminPassword.ts"
+    "reset-admin-password": "tsx src/scripts/resetAdminPassword.ts",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "keywords": [],
   "author": "",
@@ -39,7 +41,11 @@
     "@types/morgan": "^1.9.10",
     "@types/node": "^26.6.6",
     "@types/nodemailer": "^8.0.2",
+    "@types/supertest": "^7.2.1",
+    "mongodb-memory-server": "^11.3.0",
+    "supertest": "^7.3.2",
     "tsx": "^4.23.15",
-    "typescript": "^7.0.2"
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.0"
   }
 }
