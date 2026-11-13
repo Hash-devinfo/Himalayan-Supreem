@@ -27,7 +27,7 @@ import { orderPublicRoutes } from './modules/orders/orderPublic.routes.js';
 import { notificationAdminRoutes } from './modules/notifications/notification.routes.js';
 import { reportAdminRoutes } from './modules/reports/report.routes.js';
 import { refundAdminRoutes } from './modules/refunds/refund.routes.js';
-
+import { pageAdminRoutes, pagePublicRoutes } from './modules/pages/page.routes.js';
 
 
 
@@ -80,7 +80,8 @@ app.use('/api/orders', orderPublicRoutes);
 app.use('/api/admin/notifications', notificationAdminRoutes);
 app.use('/api/admin/refunds', refundAdminRoutes);
 app.use('/api/admin/reports', reportAdminRoutes);
-
+app.use('/api/pages', pagePublicRoutes);
+app.use('/api/admin/pages', pageAdminRoutes);
 
 
 
