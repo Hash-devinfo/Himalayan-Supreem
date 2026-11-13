@@ -1,0 +1,61 @@
+# Runs on GitHub's servers after every push to main and on every pull request.
+# Checks the backend: install, type check, automated tests, build.
+name: Server CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'server/**'
+      - '.github/workflows/server-ci.yml'
+  pull_request:
+    paths:
+      - 'server/**'
+      - '.github/workflows/server-ci.yml'
+
+# Read-only: this workflow never changes the repository
+permissions:
+  contents: read
+
+# A newer push cancels the older run that is still going
+concurrency:
+  group: server-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: server
+
+    steps:
+      - name: Get the code
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+
+      # The throwaway test MongoDB (~100 MB) is downloaded once, then reused
+      - name: Cache test MongoDB
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/mongodb-binaries
+          key: mongodb-binaries-${{ runner.os }}-${{ hashFiles('server/package-lock.json') }}
+
+      - name: Install packages
+        run: npm ci
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Automated tests
+        run: npm test
+
+      - name: Build
+        run: npm run build
