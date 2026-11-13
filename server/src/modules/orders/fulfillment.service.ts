@@ -209,7 +209,9 @@ export async function markRemitted(input: RemitInput, actor: ActorContext) {
     const orders = await Order.find(filter).session(session);
 
     if (orders.length !== keys.length) throw new AppError('One or more orders were not found', 404);
-    const notReady = orders.find((o) => o.status !== 'delivered' || o.payment.remittanceStatus !== 'pending');
+        // Refunded orders count too: the courier still collected their COD and owes it to the store
+    const COD_COLLECTED: readonly string[] = ['delivered', 'refund_pending', 'refunded'];
+    const notReady = orders.find((o) => !COD_COLLECTED.includes(o.status) || o.payment.remittanceStatus !== 'pending');
     if (notReady) {
       throw new AppError(
         notReady.payment.remittanceStatus === 'remitted'
