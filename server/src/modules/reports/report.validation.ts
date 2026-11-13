@@ -38,3 +38,7 @@ export type ProfitQuery = z.infer<typeof profitQuerySchema>;
 export const inventoryQuerySchema = checkRange(z.strictObject({ ...dateRangeQuery }));
 
 export type InventoryQuery = z.infer<typeof inventoryQuerySchema>;
+
+export const fulfillmentQuerySchema = checkRange(z.strictObject({ ...dateRangeQuery }));
+
+export type FulfillmentQuery = z.infer<typeof fulfillmentQuerySchema>;

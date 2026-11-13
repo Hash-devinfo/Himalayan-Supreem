@@ -15,3 +15,6 @@ reportAdminRoutes.get("/profit", reportController.profit);
 
 // Stock now, low stock, expiry; ?from&to for stock movements
 reportAdminRoutes.get("/inventory", reportController.inventory);
+
+// Orders by status, courier performance, failures, COD held and remitted
+reportAdminRoutes.get('/fulfillment', reportController.fulfillment);
