@@ -32,7 +32,7 @@ orderAdminRoutes.post(
   validateBody(remitSchema),
   orderController.remit,
 );
-
+orderAdminRoutes.get("/couriers", orderController.couriers);
 orderAdminRoutes.get("/:id", orderController.get);
 orderAdminRoutes.post(
   "/:id/calls",
@@ -105,6 +105,6 @@ orderAdminRoutes.patch(
   orderController.updateContact,
 );
 orderAdminRoutes.get("/:id/invoice", orderController.invoice);
-orderAdminRoutes.get("/couriers", orderController.couriers);
+
 // Manual order for a WhatsApp or phone customer (13B)
 orderAdminRoutes.post('/manual', validateBody(manualOrderSchema), orderController.createManual);
