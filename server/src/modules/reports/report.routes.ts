@@ -18,3 +18,8 @@ reportAdminRoutes.get("/inventory", reportController.inventory);
 
 // Orders by status, courier performance, failures, COD held and remitted
 reportAdminRoutes.get('/fulfillment', reportController.fulfillment);
+
+
+
+// Cancellations by type and reason; refunds by reason, method and product; open refunds
+reportAdminRoutes.get('/cancellations', reportController.cancellations);
