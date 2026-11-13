@@ -8,6 +8,8 @@ const MAX_RANGE_DAYS = 366;
 export const dateRangeQuery = {
   from: pktDate('From date').optional(),
   to: pktDate('To date').optional(),
+  // &format=csv downloads the report as a spreadsheet file instead of JSON
+  format: z.enum(['json', 'csv'], 'Format must be json or csv').default('json'),
 };
 
 export const checkRange = <T extends { from?: Date; to?: Date }>(schema: z.ZodType<T>) =>

@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express';
 import { parseOrThrow } from '../../middleware/validate.js';
+import { sendCsv } from '../../utils/csv.js';
 import {
   cancellationsQuerySchema,
   fulfillmentQuerySchema,
@@ -12,33 +13,41 @@ import * as profitService from './profit.service.js';
 import * as stockReportService from './stockReport.service.js';
 import * as fulfillmentReportService from './fulfillmentReport.service.js';
 import * as cancellationsReportService from './cancellationsReport.service.js';
+import * as reportCsv from './reportCsv.js';
 
+// Every report: JSON by default, or a CSV download with &format=csv
 
 export async function sales(req: Request, res: Response): Promise<void> {
   const query = parseOrThrow(salesQuerySchema, req.query);
-  res.json({ success: true, ...(await salesService.salesReport(query)) });
+  const report = await salesService.salesReport(query);
+  if (query.format === 'csv') return sendCsv(res, reportCsv.salesCsv(report));
+  res.json({ success: true, ...report });
 }
-
 
 export async function profit(req: Request, res: Response): Promise<void> {
   const query = parseOrThrow(profitQuerySchema, req.query);
-  res.json({ success: true, ...(await profitService.profitReport(query)) });
+  const report = await profitService.profitReport(query);
+  if (query.format === 'csv') return sendCsv(res, reportCsv.profitCsv(report));
+  res.json({ success: true, ...report });
 }
-
 
 export async function inventory(req: Request, res: Response): Promise<void> {
   const query = parseOrThrow(inventoryQuerySchema, req.query);
-  res.json({ success: true, ...(await stockReportService.inventoryReport(query)) });
+  const report = await stockReportService.inventoryReport(query);
+  if (query.format === 'csv') return sendCsv(res, reportCsv.inventoryCsv(report));
+  res.json({ success: true, ...report });
 }
-
 
 export async function fulfillment(req: Request, res: Response): Promise<void> {
   const query = parseOrThrow(fulfillmentQuerySchema, req.query);
-  res.json({ success: true, ...(await fulfillmentReportService.fulfillmentReport(query)) });
+  const report = await fulfillmentReportService.fulfillmentReport(query);
+  if (query.format === 'csv') return sendCsv(res, reportCsv.fulfillmentCsv(report));
+  res.json({ success: true, ...report });
 }
-
 
 export async function cancellations(req: Request, res: Response): Promise<void> {
   const query = parseOrThrow(cancellationsQuerySchema, req.query);
-  res.json({ success: true, ...(await cancellationsReportService.cancellationsReport(query)) });
+  const report = await cancellationsReportService.cancellationsReport(query);
+  if (query.format === 'csv') return sendCsv(res, reportCsv.cancellationsCsv(report));
+  res.json({ success: true, ...report });
 }
