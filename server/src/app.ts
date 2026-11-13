@@ -29,7 +29,8 @@ import { reportAdminRoutes } from './modules/reports/report.routes.js';
 import { refundAdminRoutes } from './modules/refunds/refund.routes.js';
 import { pageAdminRoutes, pagePublicRoutes } from './modules/pages/page.routes.js';
 import { customerAdminRoutes } from './modules/customers/customer.routes.js';
-
+import { analyticsPublicRoutes } from './modules/analytics/analytics.routes.js';
+import { visitorCookie } from './modules/analytics/visitor.js';
 
 const app: Express = express();
 
@@ -66,6 +67,8 @@ app.get("/api/health", (_req: Request, res: Response) => {
 
 app.use("/api/admin/auth", authRoutes);
 app.use("/api/categories", categoryPublicRoutes);
+// Anonymous visitor ID for analytics, on storefront routes only (never on admin routes)
+app.use(['/api/products', '/api/cart', '/api/checkout', '/api/analytics'], visitorCookie);
 app.use("/api/admin/categories", categoryAdminRoutes);
 app.use("/api/products", productPublicRoutes);
 app.use("/api/admin/products", productAdminRoutes);
@@ -83,7 +86,7 @@ app.use('/api/admin/reports', reportAdminRoutes);
 app.use('/api/pages', pagePublicRoutes);
 app.use('/api/admin/pages', pageAdminRoutes);
 app.use('/api/admin/customers', customerAdminRoutes);
-
+app.use('/api/analytics', analyticsPublicRoutes);
 
 
 

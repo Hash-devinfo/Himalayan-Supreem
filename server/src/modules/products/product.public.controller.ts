@@ -2,12 +2,16 @@ import type { Request, Response } from 'express';
 import * as publicService from './product.public.service.js';
 import { parseOrThrow } from '../../middleware/validate.js';
 import { listProductsPublicQuerySchema } from './product.validation.js';
+import { track } from '../analytics/analytics.service.js';
+
 
 type SlugParams = { slug: string };
 
 export async function list(req: Request, res: Response): Promise<void> {
   const query = parseOrThrow(listProductsPublicQuerySchema, req.query);
   const result = await publicService.listPublicProducts(query);
+    // What customers search for, and whether they found anything (only searches, not plain browsing)
+  if (query.search) track(req, { type: 'search', searchQuery: query.search, resultCount: result.total });
   res.json({ success: true, ...result });
 }
 
@@ -18,5 +22,6 @@ export async function filters(_req: Request, res: Response): Promise<void> {
 
 export async function getBySlug(req: Request<SlugParams>, res: Response): Promise<void> {
   const product = await publicService.getPublicProductBySlug(req.params.slug);
+    track(req, { type: 'product_view', product: product.id });
   res.json({ success: true, product });
 }

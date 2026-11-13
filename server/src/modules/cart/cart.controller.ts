@@ -2,6 +2,8 @@ import type { Request, Response } from 'express';
 import * as cartService from './cart.service.js';
 import { CART_COOKIE_NAME, cartCookieOptions, readCartSessionId } from './cart.cookie.js';
 import type { AddItemInput, DeliveryPreviewInput, UpdateItemInput } from './cart.validation.js';
+import { track } from '../analytics/analytics.service.js';
+
 type VariantParams = { variantId: string };
 
 function sessionFrom(req: Request): string | undefined {
@@ -20,7 +22,9 @@ export async function get(req: Request, res: Response): Promise<void> {
 }
 
 export async function addItem(req: Request, res: Response): Promise<void> {
-  const result = await cartService.addItem(sessionFrom(req), req.body as AddItemInput);
+  const input = req.body as AddItemInput;
+  const result = await cartService.addItem(sessionFrom(req), input);
+  track(req, { type: 'add_to_cart', variant: input.variantId });
   sendCart(res, result, 201);
 }
 
