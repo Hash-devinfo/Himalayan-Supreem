@@ -19,7 +19,7 @@ import type { DeliverOrderInput, FailDeliveryInput, RemitInput, ReturnOrderInput
 import * as contactService from './contact.service.js';
 import * as invoiceService from './invoice.service.js';
 import type { UpdateContactInput } from './contact.validation.js';
-
+import { listCouriers } from '../../providers/couriers/index.js';
 
 type IdParams = { id: string };
 
@@ -132,4 +132,10 @@ export async function invoice(req: Request<IdParams>, res: Response): Promise<vo
 export async function createManual(req: Request, res: Response): Promise<void> {
   const result = await manualOrderService.createManualOrder(req.body as ManualOrderInput, actorFrom(req));
   res.status(201).json({ success: true, ...result });
+}
+
+
+// Admin: the couriers to choose from when dispatching
+export function couriers(_req: Request, res: Response): void {
+  res.json({ success: true, couriers: listCouriers() });
 }

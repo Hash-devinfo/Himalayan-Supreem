@@ -19,6 +19,7 @@ import {
   assertDailyLimit,
   assertNotBlocked,
 } from "../customers/risk.service.js";
+import { startPayment } from "../../providers/payments/index.js";
 
 // ── What the customer sees after ordering ────────────
 
@@ -91,6 +92,7 @@ export async function placeOrder(
 ): Promise<OrderConfirmation> {
   // 0. Fake-order protection: a blocked number is asked to order on WhatsApp instead (BR-16)
   await assertNotBlocked(input.phone);
+  const payment = startPayment(input.paymentMethod);
   // 1. Re-check the cart (published, active, current prices, stock)
   const cart = await getCart(sessionId);
   if (cart.items.length === 0) throw new AppError("Your cart is empty", 400);
@@ -240,7 +242,7 @@ export async function placeOrder(
               name: delivery.zone,
               estimateText: delivery.estimateText,
             },
-            payment: { method: input.paymentMethod, status: "pending" },
+            payment,
             status: "new",
             statusHistory: [
               { status: "new", at: new Date(), note: "Placed by customer" },

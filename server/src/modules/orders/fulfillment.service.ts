@@ -10,6 +10,7 @@ import { changeOrder, setStatus } from './order.service.js';
 import { statusLabel } from './orderStatus.js';
 import { notifyOrder } from '../notifications/notification.service.js';
 import type { DeliverOrderInput, FailDeliveryInput, RemitInput, ReturnOrderInput, ShipOrderInput } from './fulfillment.validation.js';
+import { courierProvider } from '../../providers/couriers/index.js';
 
 const FAILURE_LABELS = { refused: 'Refused by customer', uncollected: 'Not collected', address_issue: 'Address problem', other: 'Other' } as const;
 
@@ -21,18 +22,22 @@ export async function shipOrder(idOrNumber: string, input: ShipOrderInput, actor
     const before = order.status;
     const reattempt = before === 'delivery_failed';
     firstDispatch = !reattempt;
+        if (!reattempt && !input.courier) throw new AppError('Choose the courier', 400);
+
+    // The courier provider decides the tracking number (manual: the one the admin typed)
+    let tracking = order.fulfillment.trackingNumber;
     if (!reattempt) {
-      if (!input.courier || !input.trackingNumber) {
-        throw new AppError('Choose the courier and enter the tracking number', 400);
-      }
+      const shipment = await courierProvider(input.courier!).registerShipment({ orderNumber: order.orderNumber, trackingNumber: input.trackingNumber });
+      tracking = shipment.trackingNumber;
+    } else if (input.trackingNumber) {
+      tracking = input.trackingNumber;
     }
 
-    const tracking = input.trackingNumber ?? order.fulfillment.trackingNumber;
-    if (input.trackingNumber) {
+    if (tracking && tracking !== order.fulfillment.trackingNumber) {
       // The same courier number on two parcels is almost always a typing mistake
-      const filter: Record<string, unknown> = { 'fulfillment.trackingNumber': input.trackingNumber, _id: mongoose.trusted({ $ne: order._id }) };
+      const filter: Record<string, unknown> = { 'fulfillment.trackingNumber': tracking, _id: mongoose.trusted({ $ne: order._id }) };
       const other = await Order.findOne(filter).select('orderNumber').session(session);
-      if (other) throw new AppError(`Tracking number ${input.trackingNumber} is already used on order ${other.orderNumber}`, 409);
+      if (other) throw new AppError(`Tracking number ${tracking} is already used on order ${other.orderNumber}`, 409);
     }
 
     setStatus(order, 'shipped', actor, input.note ?? (reattempt ? 'Courier re-attempt' : `Dispatched with ${input.courier?.toUpperCase()}`));

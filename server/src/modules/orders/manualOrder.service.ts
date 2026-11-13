@@ -14,6 +14,9 @@ import { notifyOrder } from '../notifications/notification.service.js';
 import { statusLabel } from './orderStatus.js';
 import type { OrderStatus } from '../../constants/enums.js';
 import type { ManualOrderInput } from './manualOrder.validation.js';
+import { startPayment } from '../../providers/payments/index.js';
+
+
 
 const CHANNEL_LABELS = { whatsapp: 'WhatsApp', phone: 'phone call', other: 'other' } as const;
 
@@ -142,7 +145,7 @@ export async function createManualOrder(input: ManualOrderInput, actor: ActorCon
               total: itemsTotal - discount + delivery.charge,
             },
             deliveryZone: { zone: delivery.zoneId, name: delivery.zone, estimateText: delivery.estimateText },
-            payment: { method: 'cod', status: 'pending' },
+           payment: startPayment('cod'),
             status: input.confirmedWithCustomer ? 'confirmed' : 'new',
             statusHistory,
             // A confirmed manual order counts as a confirmation "call" (it was a conversation)

@@ -8,3 +8,5 @@ import { checkoutSchema } from './checkout.validation.js';
 export const checkoutRoutes = Router();
 
 checkoutRoutes.post('/', checkoutLimiter, validateBody(checkoutSchema), checkoutController.placeOrder);
+
+checkoutRoutes.get('/payment-methods', checkoutController.paymentMethods);

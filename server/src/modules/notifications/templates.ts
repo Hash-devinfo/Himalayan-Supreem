@@ -53,7 +53,9 @@ export function renderTemplate(text: string, values: PlaceholderValues): string 
   return text.replace(PLACEHOLDER_PATTERN, (whole, name: string) => (name in values ? values[name as PlaceholderName] : whole));
 }
 
-export const COURIER_NAMES = { tcs: 'TCS', postex: 'PostEx', leopards: 'Leopards' } as const;
+// Courier names now live in one place (constants/couriers.ts); re-exported for older imports
+import { COURIER_NAMES } from '../../constants/couriers.js';
+export { COURIER_NAMES };
 
 
 function rupees(amount: number): string {

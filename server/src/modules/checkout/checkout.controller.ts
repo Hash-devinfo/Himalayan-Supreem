@@ -3,7 +3,7 @@ import * as checkoutService from './checkout.service.js';
 import { CART_COOKIE_NAME, cartCookieOptions, readCartSessionId } from '../cart/cart.cookie.js';
 import type { CheckoutInput } from './checkout.validation.js';
 import { track } from '../analytics/analytics.service.js';
-
+import { availablePaymentMethods } from '../../providers/payments/index.js';
 
 export async function placeOrder(req: Request, res: Response): Promise<void> {
   const sessionId = readCartSessionId(req.cookies?.[CART_COOKIE_NAME]);
@@ -14,4 +14,10 @@ export async function placeOrder(req: Request, res: Response): Promise<void> {
   res.clearCookie(CART_COOKIE_NAME, cookieOptions);
 
   res.status(201).json({ success: true, order });
+}
+
+
+// Public: the payment methods the checkout page should offer
+export function paymentMethods(_req: Request, res: Response): void {
+  res.json({ success: true, methods: availablePaymentMethods() });
 }
