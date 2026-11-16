@@ -1,0 +1,26 @@
+import { Navigate, Route, Routes } from 'react-router';
+import AdminAuthProvider from '../../features/admin/auth/AdminAuthProvider';
+import RequireAdmin from '../../features/admin/auth/RequireAdmin';
+import AdminLayout from '../../layouts/AdminLayout';
+import AdminLoginPage from './AdminLoginPage';
+import AdminDashboardPage from './AdminDashboardPage';
+
+// Paths here are relative to /admin
+export default function AdminApp() {
+  return (
+    <AdminAuthProvider>
+      <Routes>
+        <Route path="login" element={<AdminLoginPage />} />
+
+        <Route element={<RequireAdmin />}>
+          <Route element={<AdminLayout />}>
+            <Route index element={<AdminDashboardPage />} />
+            {/* New admin pages go here */}
+          </Route>
+        </Route>
+
+        <Route path="*" element={<Navigate to="/admin" replace />} />
+      </Routes>
+    </AdminAuthProvider>
+  );
+}

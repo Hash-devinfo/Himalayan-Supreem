@@ -1,21 +1,12 @@
 import { lazy, Suspense } from 'react';
 import PageLoader from '../../components/ui/PageLoader';
 
-const AdminLayout = lazy(() => import('../../layouts/AdminLayout'));
-const AdminDashboardPage = lazy(() => import('./AdminDashboardPage'));
+const AdminApp = lazy(() => import('./AdminApp'));
 
-export function LazyAdminLayout() {
+export function LazyAdminApp() {
   return (
     <Suspense fallback={<PageLoader />}>
-      <AdminLayout />
-    </Suspense>
-  );
-}
-
-export function LazyAdminDashboardPage() {
-  return (
-    <Suspense fallback={<PageLoader />}>
-      <AdminDashboardPage />
+      <AdminApp />
     </Suspense>
   );
 }

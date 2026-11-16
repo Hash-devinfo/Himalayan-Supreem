@@ -1,12 +1,17 @@
+export interface ErrorDetail {
+  field: string;
+  message: string;
+}
+
 export class ApiError extends Error {
   status: number;
-  data: unknown;
+  details: ErrorDetail[];
 
-  constructor(message: string, status: number, data: unknown) {
+  constructor(message: string, status: number, details: ErrorDetail[] = []) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
-    this.data = data;
+    this.details = details;
   }
 }
 
@@ -23,12 +28,13 @@ async function request<T>(method: Method, path: string, body?: unknown): Promise
   const isJson = res.headers.get('content-type')?.includes('application/json');
   const data = isJson ? await res.json() : null;
 
-  if (!res.ok) {
-    const message =
-      (data as { message?: string })?.message ??
-      (data as { error?: { message?: string } })?.error?.message ??
-      'Something went wrong. Please try again.';
-    throw new ApiError(message, res.status, data);
+   if (!res.ok) {
+    const err = data as { message?: string; details?: ErrorDetail[] } | null;
+    throw new ApiError(
+      err?.message ?? 'Something went wrong. Please try again.',
+      res.status,
+      err?.details ?? [],
+    );
   }
 
   return data as T;

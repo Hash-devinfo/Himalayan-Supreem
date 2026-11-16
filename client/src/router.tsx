@@ -2,7 +2,7 @@ import { createBrowserRouter } from 'react-router';
 import StoreLayout from './layouts/StoreLayout';
 import HomePage from './pages/storefront/HomePage';
 import NotFoundPage from './pages/storefront/NotFoundPage';
-import { LazyAdminLayout, LazyAdminDashboardPage } from './pages/admin/LazyAdmin';
+import { LazyAdminApp } from './pages/admin/LazyAdmin';
 
 export const router = createBrowserRouter([
   {
@@ -14,8 +14,8 @@ export const router = createBrowserRouter([
     ],
   },
   {
-    path: '/admin',
-    element: <LazyAdminLayout />,
-    children: [{ index: true, element: <LazyAdminDashboardPage /> }],
+    // "/*" lets AdminApp handle everything under /admin with its own <Routes>
+    path: '/admin/*',
+    element: <LazyAdminApp />,
   },
 ]);
