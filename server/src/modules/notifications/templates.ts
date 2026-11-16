@@ -3,6 +3,9 @@ import type { OrderDocument } from '../../models/Order.js';
 import type { SettingDocument } from '../../models/Setting.js';
 import { formatPktDate } from '../../utils/dates.js';
 import { formatPkMobile } from '../../utils/phone.js';
+import { REVIEWABLE_STATUSES } from '../../constants/reviews.js';
+import { reviewLink } from '../reviews/reviewLink.js';
+
 
 // ── What each message is for, and where it can go (design 3.8) ──
 
@@ -30,6 +33,7 @@ export const PLACEHOLDERS = {
   courier: 'Courier name (TCS, PostEx, Leopards)',
   trackingNumber: 'Courier tracking number',
   supportWhatsapp: 'Your support WhatsApp number (from Settings)',
+    reviewLink: 'Link where the customer reviews the products (for the Delivered message)',
 } as const;
 
 export type PlaceholderName = keyof typeof PLACEHOLDERS;
@@ -75,6 +79,8 @@ export function valuesForOrder(order: OrderDocument, settings: SettingDocument):
     courier: order.fulfillment.courier ? COURIER_NAMES[order.fulfillment.courier] : '',
     trackingNumber: order.fulfillment.trackingNumber ?? '',
     supportWhatsapp: settings.store.whatsappNumber ? formatPkMobile(settings.store.whatsappNumber) : '',
+        // Only once the order is delivered (the link would not work before)
+    reviewLink: REVIEWABLE_STATUSES.includes(order.status) ? reviewLink(order) : '',
   };
 }
 
@@ -92,5 +98,6 @@ export function sampleValues(settings: SettingDocument): PlaceholderValues {
     courier: 'TCS',
     trackingNumber: 'SAMPLE123',
     supportWhatsapp: settings.store.whatsappNumber ? formatPkMobile(settings.store.whatsappNumber) : '',
+        reviewLink: 'https://example.com/review?order=SAMPLE',
   };
 }

@@ -31,7 +31,14 @@ import { pageAdminRoutes, pagePublicRoutes } from './modules/pages/page.routes.j
 import { customerAdminRoutes } from './modules/customers/customer.routes.js';
 import { analyticsPublicRoutes } from './modules/analytics/analytics.routes.js';
 import { visitorCookie } from './modules/analytics/visitor.js';
-import { reviewPublicRoutes } from './modules/reviews/review.routes.js';
+import { reviewAdminRoutes, reviewPublicRoutes } from './modules/reviews/review.routes.js';
+
+
+
+
+
+
+
 
 const app: Express = express();
 
@@ -89,7 +96,7 @@ app.use('/api/admin/pages', pageAdminRoutes);
 app.use('/api/admin/customers', customerAdminRoutes);
 app.use('/api/analytics', analyticsPublicRoutes);
 app.use('/api/reviews', reviewPublicRoutes);
-
+app.use('/api/admin/reviews', reviewAdminRoutes);
 
 // 4. Error handling (must be last)
 app.use(notFound);
