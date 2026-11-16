@@ -44,3 +44,11 @@ export const checkoutLimiter = createLimiter(
   10,
   'Too many orders from this connection. Please contact support if you need help.'
 );
+
+
+// Reviews: stops guessing order numbers and review spam
+export const reviewLimiter = createLimiter(
+  15,
+  10,
+  'Too many attempts. Please try again in 15 minutes.'
+);
