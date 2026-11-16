@@ -32,6 +32,7 @@ import { customerAdminRoutes } from './modules/customers/customer.routes.js';
 import { analyticsPublicRoutes } from './modules/analytics/analytics.routes.js';
 import { visitorCookie } from './modules/analytics/visitor.js';
 import { reviewAdminRoutes, reviewPublicRoutes } from './modules/reviews/review.routes.js';
+import { promotionAdminRoutes } from './modules/promotions/promotion.routes.js';
 
 
 
@@ -97,6 +98,7 @@ app.use('/api/admin/customers', customerAdminRoutes);
 app.use('/api/analytics', analyticsPublicRoutes);
 app.use('/api/reviews', reviewPublicRoutes);
 app.use('/api/admin/reviews', reviewAdminRoutes);
+app.use('/api/admin/promotions', promotionAdminRoutes);
 
 // 4. Error handling (must be last)
 app.use(notFound);
