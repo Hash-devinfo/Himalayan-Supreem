@@ -1,14 +1,8 @@
-import { lazy, Suspense, type ReactNode } from 'react';
 import { createBrowserRouter } from 'react-router';
 import StoreLayout from './layouts/StoreLayout';
 import HomePage from './pages/storefront/HomePage';
 import NotFoundPage from './pages/storefront/NotFoundPage';
-import PageLoader from './components/ui/PageLoader';
-
-const AdminLayout = lazy(() => import('./layouts/AdminLayout'));
-const AdminDashboardPage = lazy(() => import('./pages/admin/AdminDashboardPage'));
-
-const withSuspense = (node: ReactNode) => <Suspense fallback={<PageLoader />}>{node}</Suspense>;
+import { LazyAdminLayout, LazyAdminDashboardPage } from './pages/admin/LazyAdmin';
 
 export const router = createBrowserRouter([
   {
@@ -21,7 +15,7 @@ export const router = createBrowserRouter([
   },
   {
     path: '/admin',
-    element: withSuspense(<AdminLayout />),
-    children: [{ index: true, element: withSuspense(<AdminDashboardPage />) }],
+    element: <LazyAdminLayout />,
+    children: [{ index: true, element: <LazyAdminDashboardPage /> }],
   },
 ]);
