@@ -1,1 +1,50 @@
 @import "tailwindcss";
+
+/* Sage and stone theme: these become classes like bg-canvas, text-ink, border-line */
+@theme {
+  --font-sans: "Manrope Variable", ui-sans-serif, system-ui, sans-serif;
+
+  --color-canvas: #f4f3ee;        /* page background */
+  --color-surface: #ffffff;       /* cards, panels, inputs */
+  --color-ink: #2a2a28;           /* main text, primary buttons */
+  --color-ink-hover: #41413e;
+  --color-muted: #5f655a;         /* secondary text */
+  --color-line: #e0dfd6;          /* borders, dividers */
+  --color-sage: #4e5d45;          /* accent: links, "organic", success */
+  --color-sage-soft: #e3e5db;     /* image placeholders, badges, hover tints */
+  --color-danger: #a8321f;        /* errors, "only 2 left" */
+  --color-danger-soft: #f7e4df;
+  --color-warning: #8a5a12;       /* expiry soon, low stock (admin) */
+  --color-warning-soft: #f5ecd9;
+}
+
+@layer base {
+  html {
+    background-color: var(--color-canvas);
+    color: var(--color-ink);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  ::selection {
+    background-color: var(--color-sage-soft);
+  }
+}
+
+/* Reusable pieces, so every page looks the same */
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center justify-center rounded-full bg-ink px-5 py-2.5 text-sm font-medium text-canvas transition-colors hover:bg-ink-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sage disabled:opacity-60;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center rounded-full border border-ink px-5 py-2.5 text-sm font-medium text-ink transition-colors hover:bg-sage-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sage disabled:opacity-60;
+  }
+
+  .input-field {
+    @apply mt-1 w-full rounded-lg border border-line bg-surface px-3 py-2.5 text-sm text-ink outline-none transition-colors placeholder:text-muted focus:border-sage focus:ring-2 focus:ring-sage/25;
+  }
+
+  .card {
+    @apply rounded-2xl border border-line bg-surface;
+  }
+}

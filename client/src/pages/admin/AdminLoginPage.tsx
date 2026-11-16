@@ -38,27 +38,21 @@ export default function AdminLoginPage() {
     }
   }
 
-  const inputClass = (field: string) =>
-    `mt-1 w-full rounded border px-3 py-2 outline-none focus:ring-2 focus:ring-stone-400 ${
-      fieldErrors[field] ? 'border-red-500' : 'border-stone-300'
-    }`;
-
-  return (
-    <main className="flex min-h-screen items-center justify-center bg-stone-100 px-4">
-      <form
-        onSubmit={handleSubmit}
-        noValidate
-        className="w-full max-w-sm rounded-lg bg-white p-6 shadow-sm"
-      >
-        <h1 className="mb-6 text-xl font-semibold text-stone-800">Admin login</h1>
+    const inputClass = (field: string) =>
+    `input-field ${fieldErrors[field] ? 'border-danger focus:border-danger focus:ring-danger/20' : ''}`;
+   return (
+    <main className="flex min-h-screen items-center justify-center px-4">
+      <form onSubmit={handleSubmit} noValidate className="card w-full max-w-sm p-6 md:p-8">
+        <h1 className="mb-1 text-xl font-medium">Admin login</h1>
+        <p className="mb-6 text-sm text-muted">Sign in to manage the store.</p>
 
         {error && (
-          <p role="alert" className="mb-4 rounded bg-red-50 px-3 py-2 text-sm text-red-700">
+          <p role="alert" className="mb-4 rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger">
             {error}
           </p>
         )}
 
-        <label htmlFor="email" className="block text-sm font-medium text-stone-700">
+        <label htmlFor="email" className="block text-sm font-medium">
           Email
         </label>
         <input
@@ -73,12 +67,12 @@ export default function AdminLoginPage() {
           className={inputClass('email')}
         />
         {fieldErrors.email && (
-          <p id="email-error" className="mt-1 text-xs text-red-600">
+          <p id="email-error" className="mt-1 text-xs text-danger">
             {fieldErrors.email}
           </p>
         )}
 
-        <label htmlFor="password" className="mt-4 block text-sm font-medium text-stone-700">
+        <label htmlFor="password" className="mt-4 block text-sm font-medium">
           Password
         </label>
         <input
@@ -93,16 +87,12 @@ export default function AdminLoginPage() {
           className={inputClass('password')}
         />
         {fieldErrors.password && (
-          <p id="password-error" className="mt-1 text-xs text-red-600">
+          <p id="password-error" className="mt-1 text-xs text-danger">
             {fieldErrors.password}
           </p>
         )}
 
-        <button
-          type="submit"
-          disabled={submitting}
-          className="mt-6 w-full rounded bg-stone-800 py-2 font-medium text-white hover:bg-stone-700 disabled:opacity-60"
-        >
+        <button type="submit" disabled={submitting} className="btn-primary mt-6 w-full">
           {submitting ? 'Logging in…' : 'Log in'}
         </button>
       </form>
