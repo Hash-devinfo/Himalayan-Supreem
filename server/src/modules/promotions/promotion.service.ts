@@ -251,3 +251,4 @@ export async function getPromotion(id: string) {
   ]);
   return { promotion: toPromotionView(promo), usage: { orders: usage?.orders ?? 0, discountGiven: usage?.discount ?? 0 } };
 }
+

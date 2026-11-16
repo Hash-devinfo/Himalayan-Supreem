@@ -132,6 +132,13 @@ export async function deliveredOrder(lines: { variant: VariantDocument; qty: num
   await deliverOrder(orderNumber, {}, actor);
   return orderNumber;
 }
+// An order that is already placed: confirmed on call -> packed -> shipped -> delivered
+export async function logCallConfirmAndDeliver(orderNumber: string) {
+  await logCall(orderNumber, { outcome: 'confirmed' }, actor);
+  await packOrder(orderNumber, {}, actor);
+  await shipOrder(orderNumber, { courier: 'tcs', trackingNumber: `TCS${Date.now()}${phoneCount}` }, actor);
+  await deliverOrder(orderNumber, {}, actor);
+}
 
 export async function stockOf(variant: VariantDocument) {
   const v = await Variant.findById(variant._id).lean();

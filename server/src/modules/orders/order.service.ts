@@ -27,6 +27,9 @@ import type {
   RecordCancellationRequestInput,
   UpdateNotesInput,
 } from "./order.validation.js";
+import { releaseCode } from '../promotions/cartPricing.js';
+
+
 // Calls that did not reach the customer
 const UNANSWERED: readonly ContactOutcome[] = [
   "no_answer",
@@ -190,7 +193,10 @@ async function releaseOrderStock(
       actor.adminId,
     );
   }
+  // A cancelled order also gives back its discount code use
+  await releaseCode(order._id, session);
 }
+
 
 // Logs a confirmation call (design 3.4). Unanswered: next attempt. Confirmed: the phone is verified.
 // Customer cancelled: the order is cancelled and its stock released.

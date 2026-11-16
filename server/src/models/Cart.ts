@@ -1,5 +1,5 @@
-import { Schema, model, type HydratedDocument, type Types } from 'mongoose';
-import { CART_STATUSES, type CartStatus } from '../constants/enums.js';
+import { Schema, model, type HydratedDocument, type Types } from "mongoose";
+import { CART_STATUSES, type CartStatus } from "../constants/enums.js";
 
 export interface CartItem {
   variant: Types.ObjectId;
@@ -13,6 +13,7 @@ export interface ICart {
   items: CartItem[];
   status: CartStatus;
   convertedOrder?: Types.ObjectId;
+  promoCode?: string;
   lastActivityAt: Date;
   expiresAt: Date;
   createdAt: Date;
@@ -21,16 +22,24 @@ export interface ICart {
 
 export type CartDocument = HydratedDocument<ICart>;
 
-const wholeNumber = { validator: Number.isInteger, message: '{PATH} must be a whole number' };
+const wholeNumber = {
+  validator: Number.isInteger,
+  message: "{PATH} must be a whole number",
+};
 
 const cartItemSchema = new Schema<CartItem>(
   {
-    variant: { type: Schema.Types.ObjectId, ref: 'Variant', required: true },
+    variant: { type: Schema.Types.ObjectId, ref: "Variant", required: true },
     quantity: { type: Number, required: true, min: 1, validate: wholeNumber },
-    lastSeenPrice: { type: Number, required: true, min: 0, validate: wholeNumber },
+    lastSeenPrice: {
+      type: Number,
+      required: true,
+      min: 0,
+      validate: wholeNumber,
+    },
     addedAt: { type: Date, default: Date.now },
   },
-  { _id: false }
+  { _id: false },
 );
 
 const cartSchema = new Schema<ICart>(
@@ -38,8 +47,9 @@ const cartSchema = new Schema<ICart>(
     // Random value from the browser's cart cookie
     sessionId: { type: String, required: true, unique: true },
     items: { type: [cartItemSchema], default: [] },
-    status: { type: String, enum: CART_STATUSES, default: 'active' },
-    convertedOrder: { type: Schema.Types.ObjectId, ref: 'Order' },
+    status: { type: String, enum: CART_STATUSES, default: "active" },
+    convertedOrder: { type: Schema.Types.ObjectId, ref: "Order" },
+    promoCode: { type: String, trim: true, uppercase: true, maxlength: 30 },
     lastActivityAt: { type: Date, default: Date.now },
     // MongoDB deletes the cart automatically once this time has passed
     expiresAt: { type: Date, required: true },
@@ -50,7 +60,7 @@ const cartSchema = new Schema<ICart>(
     // the second save fails instead of silently overwriting the first. The service then retries.
     optimisticConcurrency: true,
     toJSON: { versionKey: false },
-  }
+  },
 );
 
 // TTL index: "delete each cart when its expiresAt is reached"
@@ -58,6 +68,6 @@ cartSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 // For abandoned-cart reports later
 cartSchema.index({ status: 1, lastActivityAt: 1 });
 
-const Cart = model<ICart>('Cart', cartSchema);
+const Cart = model<ICart>("Cart", cartSchema);
 
 export default Cart;

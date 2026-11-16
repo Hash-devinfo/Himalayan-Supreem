@@ -1,13 +1,27 @@
-import mongoose, { isValidObjectId, type Types } from 'mongoose';
-import Cart, { type CartDocument } from '../../models/Cart.js';
-import Variant from '../../models/Variant.js';
-import Product from '../../models/Product.js';
-import { CART_RETENTION_DAYS, MAX_CART_LINES, MAX_QTY_PER_ITEM } from '../../constants/cart.js';
-import AppError from '../../utils/AppError.js';
-import { addDays } from '../../utils/dates.js';
-import { newCartSessionId } from './cart.cookie.js';
-import { calculateDelivery, resolveCity, type DeliveryQuote } from '../delivery/quote.service.js';
-import type { AddItemInput, DeliveryPreviewInput, UpdateItemInput } from './cart.validation.js';
+import mongoose, { isValidObjectId, type Types } from "mongoose";
+import Cart, { type CartDocument } from "../../models/Cart.js";
+import Variant from "../../models/Variant.js";
+import Product from "../../models/Product.js";
+import {
+  CART_RETENTION_DAYS,
+  MAX_CART_LINES,
+  MAX_QTY_PER_ITEM,
+} from "../../constants/cart.js";
+import AppError from "../../utils/AppError.js";
+import { addDays } from "../../utils/dates.js";
+import { newCartSessionId } from "./cart.cookie.js";
+import {
+  calculateDelivery,
+  resolveCity,
+  type DeliveryQuote,
+} from "../delivery/quote.service.js";
+import type {
+  AddItemInput,
+  DeliveryPreviewInput,
+  UpdateItemInput,
+} from "./cart.validation.js";
+import { applyPromotions } from "../promotions/cartPricing.js";
+
 // ── What the customer sees ───────────────────────────
 
 export interface CartLine {
@@ -19,13 +33,16 @@ export interface CartLine {
   sku: string;
   price: number;
   quantity: number;
-  lineTotal: number;
+  lineTotal: number; // after any discount
+  discount: number; // rupees off this line
+  promotionId?: string;
+  promotionName?: string; // e.g. "Eid sale", shown next to the line
   inStock: boolean;
   maxQuantity: number; // the most the customer can choose right now
 }
 
 export interface CartNotice {
-  type: 'removed' | 'quantity_reduced' | 'price_changed' | 'out_of_stock';
+    type: 'removed' | 'quantity_reduced' | 'price_changed' | 'out_of_stock' | 'promotion_removed';
   variantId: string;
   message: string;
 }
@@ -34,16 +51,37 @@ export interface CartView {
   items: CartLine[];
   notices: CartNotice[];
   itemCount: number; // units, in-stock lines only
-  subtotal: number; // PKR, in-stock lines only
+  itemsTotal: number; // PKR before discounts, in-stock lines only
+  discountTotal: number; // PKR
+  subtotal: number; // PKR after discounts, in-stock lines only
+  promoCode: CartPromoCode | null;
   weightGrams: number; // in-stock lines only
   canCheckout: boolean;
 }
+export interface CartPromoCode {
+  code: string;
+  promotionId: string;
+  name: string;
+  applied: boolean;
+  discount: number;
+  message?: string; // why it does not apply yet, e.g. "Add Rs 500 more"
+}
+
 
 // A new empty cart view each time (never a shared object that could be changed by accident)
 function emptyView(): CartView {
-  return { items: [], notices: [], itemCount: 0, subtotal: 0, weightGrams: 0, canCheckout: false };
+  return {
+    items: [],
+    notices: [],
+    itemCount: 0,
+    itemsTotal: 0,
+    discountTotal: 0,
+    subtotal: 0,
+    promoCode: null,
+    weightGrams: 0,
+    canCheckout: false,
+  };
 }
-
 // ── Sellable sizes ────────────────────────────────────
 
 interface SellableSize {
@@ -59,20 +97,27 @@ interface SellableSize {
 }
 
 // A size can be bought only if it is active AND its product is published.
-export async function loadSellable(variantIds: (string | Types.ObjectId)[]): Promise<Map<string, SellableSize>> {
+export async function loadSellable(
+  variantIds: (string | Types.ObjectId)[],
+): Promise<Map<string, SellableSize>> {
   const result = new Map<string, SellableSize>();
   if (variantIds.length === 0) return result;
 
-  const variantFilter: Record<string, unknown> = { _id: mongoose.trusted({ $in: variantIds }), status: 'active' };
+  const variantFilter: Record<string, unknown> = {
+    _id: mongoose.trusted({ $in: variantIds }),
+    status: "active",
+  };
   const variants = await Variant.find(variantFilter)
-    .select('product label sku price availableQty shippingWeightGrams')
+    .select("product label sku price availableQty shippingWeightGrams")
     .lean();
 
   const productFilter: Record<string, unknown> = {
     _id: mongoose.trusted({ $in: variants.map((v) => v.product) }),
-    status: 'published',
+    status: "published",
   };
-  const products = await Product.find(productFilter).select('name slug images').lean();
+  const products = await Product.find(productFilter)
+    .select("name slug images")
+    .lean();
   const productById = new Map(products.map((p) => [String(p._id), p]));
 
   for (const variant of variants) {
@@ -88,28 +133,42 @@ export async function loadSellable(variantIds: (string | Types.ObjectId)[]): Pro
       shippingWeightGrams: variant.shippingWeightGrams,
       productName: product.name,
       productSlug: product.slug,
-      image: firstImage ? { url: firstImage.url, alt: firstImage.alt } : undefined,
+      image: firstImage
+        ? { url: firstImage.url, alt: firstImage.alt }
+        : undefined,
     });
   }
   return result;
 }
 
-function sellableOrThrow(sizes: Map<string, SellableSize>, variantId: string): SellableSize {
+function sellableOrThrow(
+  sizes: Map<string, SellableSize>,
+  variantId: string,
+): SellableSize {
   const size = sizes.get(variantId);
-  if (!size) throw new AppError('This product is no longer available', 400);
+  if (!size) throw new AppError("This product is no longer available", 400);
   return size;
 }
 
 // The quantity must fit both the stock and the per-size limit
 function assertQuantityAllowed(size: SellableSize, quantity: number): void {
   if (size.availableQty <= 0) {
-    throw new AppError(`${size.productName} (${size.label}) is out of stock`, 400);
+    throw new AppError(
+      `${size.productName} (${size.label}) is out of stock`,
+      400,
+    );
   }
   if (quantity > size.availableQty) {
-    throw new AppError(`Only ${size.availableQty} of ${size.productName} (${size.label}) left`, 400);
+    throw new AppError(
+      `Only ${size.availableQty} of ${size.productName} (${size.label}) left`,
+      400,
+    );
   }
   if (quantity > MAX_QTY_PER_ITEM) {
-    throw new AppError(`You can order at most ${MAX_QTY_PER_ITEM} of one size`, 400);
+    throw new AppError(
+      `You can order at most ${MAX_QTY_PER_ITEM} of one size`,
+      400,
+    );
   }
 }
 
@@ -122,18 +181,27 @@ async function withRetry<T>(action: () => Promise<T>): Promise<T> {
       return await action();
     } catch (error) {
       if (!(error instanceof mongoose.Error.VersionError)) throw error;
-      if (attempt === 3) throw new AppError('Your cart was changed in another tab. Please try again.', 409);
+      if (attempt === 3)
+        throw new AppError(
+          "Your cart was changed in another tab. Please try again.",
+          409,
+        );
     }
   }
 }
 
-export async function findActiveCart(sessionId: string | undefined): Promise<CartDocument | null> {
+export async function findActiveCart(
+  sessionId: string | undefined,
+): Promise<CartDocument | null> {
   if (!sessionId) return null;
   // An "abandoned" cart is still the customer's cart: if they come back, it simply reopens
-  const filter: Record<string, unknown> = { sessionId, status: mongoose.trusted({ $in: ['active', 'abandoned'] }) };
+  const filter: Record<string, unknown> = {
+    sessionId,
+    status: mongoose.trusted({ $in: ["active", "abandoned"] }),
+  };
   const cart = await Cart.findOne(filter);
-  if (cart?.status === 'abandoned') {
-    cart.status = 'active';
+  if (cart?.status === "abandoned") {
+    cart.status = "active";
     touch(cart); // coming back counts as activity, so tonight's job does not mark it again
     await cart.save();
   }
@@ -147,12 +215,18 @@ function touch(cart: CartDocument): void {
 }
 
 // A cart is only created when the first item is added (just looking creates nothing)
-async function findOrCreateCart(sessionId: string | undefined): Promise<{ cart: CartDocument; sessionId: string }> {
+async function findOrCreateCart(
+  sessionId: string | undefined,
+): Promise<{ cart: CartDocument; sessionId: string }> {
   const existing = await findActiveCart(sessionId);
   if (existing) return { cart: existing, sessionId: existing.sessionId };
 
   const newId = newCartSessionId();
-  const cart = new Cart({ sessionId: newId, items: [], expiresAt: addDays(new Date(), CART_RETENTION_DAYS) });
+  const cart = new Cart({
+    sessionId: newId,
+    items: [],
+    expiresAt: addDays(new Date(), CART_RETENTION_DAYS),
+  });
   return { cart, sessionId: newId };
 }
 
@@ -160,7 +234,9 @@ async function findOrCreateCart(sessionId: string | undefined): Promise<{ cart: 
 
 // Compares the cart with the current products, prices and stock, fixes what it must,
 // and tells the customer what changed.
-export async function buildCartView(cart: CartDocument | null): Promise<CartView> {
+export async function buildCartView(
+  cart: CartDocument | null,
+): Promise<CartView> {
   if (!cart || cart.items.length === 0) return emptyView();
 
   const sizes = await loadSellable(cart.items.map((item) => item.variant));
@@ -175,7 +251,11 @@ export async function buildCartView(cart: CartDocument | null): Promise<CartView
 
     // 1. No longer sold: remove it
     if (!size) {
-      notices.push({ type: 'removed', variantId, message: 'An item in your cart is no longer available and was removed' });
+      notices.push({
+        type: "removed",
+        variantId,
+        message: "An item in your cart is no longer available and was removed",
+      });
       changed = true;
       continue;
     }
@@ -185,7 +265,7 @@ export async function buildCartView(cart: CartDocument | null): Promise<CartView
     // 2. Price changed since the customer last saw it
     if (size.price !== item.lastSeenPrice) {
       notices.push({
-        type: 'price_changed',
+        type: "price_changed",
         variantId,
         message: `The price of ${name} changed from Rs ${item.lastSeenPrice} to Rs ${size.price}`,
       });
@@ -197,10 +277,14 @@ export async function buildCartView(cart: CartDocument | null): Promise<CartView
     const maxQuantity = Math.min(size.availableQty, MAX_QTY_PER_ITEM);
     const inStock = maxQuantity > 0;
     if (!inStock) {
-      notices.push({ type: 'out_of_stock', variantId, message: `${name} is out of stock. Remove it to continue to checkout.` });
+      notices.push({
+        type: "out_of_stock",
+        variantId,
+        message: `${name} is out of stock. Remove it to continue to checkout.`,
+      });
     } else if (item.quantity > maxQuantity) {
       notices.push({
-        type: 'quantity_reduced',
+        type: "quantity_reduced",
         variantId,
         message: `Only ${maxQuantity} of ${name} available. Your quantity was changed from ${item.quantity} to ${maxQuantity}.`,
       });
@@ -215,6 +299,7 @@ export async function buildCartView(cart: CartDocument | null): Promise<CartView
       productSlug: size.productSlug,
       image: size.image,
       label: size.label,
+      discount: 0,
       sku: size.sku,
       price: size.price,
       quantity: item.quantity,
@@ -229,15 +314,26 @@ export async function buildCartView(cart: CartDocument | null): Promise<CartView
     await cart.save();
   }
 
-  const inStockLines = items.filter((line) => line.inStock);
-  return {
+    const inStockLines = items.filter((line) => line.inStock);
+  const itemsTotal = inStockLines.reduce((sum, line) => sum + line.lineTotal, 0);
+  const view: CartView = {
     items,
     notices,
     itemCount: inStockLines.reduce((sum, line) => sum + line.quantity, 0),
-    subtotal: inStockLines.reduce((sum, line) => sum + line.lineTotal, 0),
-    weightGrams: inStockLines.reduce((sum, line) => sum + (sizes.get(line.variantId)?.shippingWeightGrams ?? 0) * line.quantity, 0),
+    itemsTotal,
+    discountTotal: 0,
+    subtotal: itemsTotal,
+    promoCode: null,
+    weightGrams: inStockLines.reduce(
+      (sum, line) =>
+        sum +
+        (sizes.get(line.variantId)?.shippingWeightGrams ?? 0) * line.quantity,
+      0,
+    ),
     canCheckout: items.length > 0 && items.every((line) => line.inStock),
   };
+  // Automatic promotions and the discount code (Phase 17)
+  return applyPromotions(cart, view);
 }
 
 // ── Actions ───────────────────────────────────────────
@@ -247,21 +343,31 @@ export interface CartResult {
   sessionId?: string; // set when the browser needs a (new) cart cookie
 }
 
-export async function getCart(sessionId: string | undefined): Promise<CartView> {
+export async function getCart(
+  sessionId: string | undefined,
+): Promise<CartView> {
   return withRetry(async () => buildCartView(await findActiveCart(sessionId)));
 }
 
 // Adds to the cart. If the size is already there, the quantities are added together.
-export async function addItem(sessionId: string | undefined, input: AddItemInput): Promise<CartResult> {
+export async function addItem(
+  sessionId: string | undefined,
+  input: AddItemInput,
+): Promise<CartResult> {
   return withRetry(() => addItemOnce(sessionId, input));
 }
 
-async function addItemOnce(sessionId: string | undefined, input: AddItemInput): Promise<CartResult> {
+async function addItemOnce(
+  sessionId: string | undefined,
+  input: AddItemInput,
+): Promise<CartResult> {
   const sizes = await loadSellable([input.variantId]);
   const size = sellableOrThrow(sizes, input.variantId);
 
   const { cart, sessionId: cartSessionId } = await findOrCreateCart(sessionId);
-  const existing = cart.items.find((item) => String(item.variant) === input.variantId);
+  const existing = cart.items.find(
+    (item) => String(item.variant) === input.variantId,
+  );
   const newQuantity = (existing?.quantity ?? 0) + input.quantity;
   assertQuantityAllowed(size, newQuantity);
 
@@ -270,9 +376,17 @@ async function addItemOnce(sessionId: string | undefined, input: AddItemInput): 
     existing.lastSeenPrice = size.price;
   } else {
     if (cart.items.length >= MAX_CART_LINES) {
-      throw new AppError(`Your cart can hold at most ${MAX_CART_LINES} different items`, 400);
+      throw new AppError(
+        `Your cart can hold at most ${MAX_CART_LINES} different items`,
+        400,
+      );
     }
-    cart.items.push({ variant: new mongoose.Types.ObjectId(input.variantId), quantity: input.quantity, lastSeenPrice: size.price, addedAt: new Date() });
+    cart.items.push({
+      variant: new mongoose.Types.ObjectId(input.variantId),
+      quantity: input.quantity,
+      lastSeenPrice: size.price,
+      addedAt: new Date(),
+    });
   }
 
   touch(cart);
@@ -281,14 +395,24 @@ async function addItemOnce(sessionId: string | undefined, input: AddItemInput): 
 }
 
 // Sets the quantity of one size that is already in the cart
-export async function updateItem(sessionId: string | undefined, variantId: string, input: UpdateItemInput): Promise<CartResult> {
+export async function updateItem(
+  sessionId: string | undefined,
+  variantId: string,
+  input: UpdateItemInput,
+): Promise<CartResult> {
   return withRetry(() => updateItemOnce(sessionId, variantId, input));
 }
 
-async function updateItemOnce(sessionId: string | undefined, variantId: string, input: UpdateItemInput): Promise<CartResult> {
+async function updateItemOnce(
+  sessionId: string | undefined,
+  variantId: string,
+  input: UpdateItemInput,
+): Promise<CartResult> {
   const cart = await findActiveCart(sessionId);
-  const item = isValidObjectId(variantId) ? cart?.items.find((i) => String(i.variant) === variantId) : undefined;
-  if (!cart || !item) throw new AppError('This item is not in your cart', 404);
+  const item = isValidObjectId(variantId)
+    ? cart?.items.find((i) => String(i.variant) === variantId)
+    : undefined;
+  if (!cart || !item) throw new AppError("This item is not in your cart", 404);
 
   const sizes = await loadSellable([variantId]);
   const size = sellableOrThrow(sizes, variantId);
@@ -302,11 +426,17 @@ async function updateItemOnce(sessionId: string | undefined, variantId: string, 
 }
 
 // Removing something that is not there is not an error: the result is the same
-export async function removeItem(sessionId: string | undefined, variantId: string): Promise<CartResult> {
+export async function removeItem(
+  sessionId: string | undefined,
+  variantId: string,
+): Promise<CartResult> {
   return withRetry(() => removeItemOnce(sessionId, variantId));
 }
 
-async function removeItemOnce(sessionId: string | undefined, variantId: string): Promise<CartResult> {
+async function removeItemOnce(
+  sessionId: string | undefined,
+  variantId: string,
+): Promise<CartResult> {
   const cart = await findActiveCart(sessionId);
   if (!cart) return { view: emptyView() };
 
@@ -319,11 +449,15 @@ async function removeItemOnce(sessionId: string | undefined, variantId: string):
   return { view: await buildCartView(cart), sessionId: cart.sessionId };
 }
 
-export async function clearCart(sessionId: string | undefined): Promise<CartResult> {
+export async function clearCart(
+  sessionId: string | undefined,
+): Promise<CartResult> {
   return withRetry(() => clearCartOnce(sessionId));
 }
 
-async function clearCartOnce(sessionId: string | undefined): Promise<CartResult> {
+async function clearCartOnce(
+  sessionId: string | undefined,
+): Promise<CartResult> {
   const cart = await findActiveCart(sessionId);
   if (!cart) return { view: emptyView() };
 
@@ -332,8 +466,6 @@ async function clearCartOnce(sessionId: string | undefined): Promise<CartResult>
   await cart.save();
   return { view: emptyView(), sessionId: cart.sessionId };
 }
-
-
 
 // ── Delivery preview ──────────────────────────────────
 
@@ -345,14 +477,24 @@ export interface CartWithDelivery {
 
 // The cart, re-checked, plus the delivery charge for the chosen city (the same rules as 7A).
 // Only previews: nothing is saved, and the order total is worked out again at checkout.
-export async function previewDelivery(sessionId: string | undefined, input: DeliveryPreviewInput): Promise<CartWithDelivery> {
+export async function previewDelivery(
+  sessionId: string | undefined,
+  input: DeliveryPreviewInput,
+): Promise<CartWithDelivery> {
   const cart = await getCart(sessionId);
   if (cart.itemCount === 0) {
-    throw new AppError('Your cart is empty. Add something to see the delivery charge.', 400);
+    throw new AppError(
+      "Your cart is empty. Add something to see the delivery charge.",
+      400,
+    );
   }
 
   const city = await resolveCity(input);
-  const delivery = await calculateDelivery(city, cart.weightGrams, cart.subtotal);
+  const delivery = await calculateDelivery(
+    city,
+    cart.weightGrams,
+    cart.subtotal,
+  );
   const total = delivery.available ? cart.subtotal + delivery.charge : null;
 
   return { cart, delivery, total };

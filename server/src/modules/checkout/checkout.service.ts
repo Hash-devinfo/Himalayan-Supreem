@@ -20,6 +20,7 @@ import {
   assertNotBlocked,
 } from "../customers/risk.service.js";
 import { startPayment } from "../../providers/payments/index.js";
+import { redeemCode } from "../promotions/cartPricing.js";
 
 // ── What the customer sees after ordering ────────────
 
@@ -40,6 +41,8 @@ export interface OrderConfirmation {
     variantLabel: string;
     qty: number;
     unitPrice: number;
+    discount: number;
+    promotionName?: string;
     lineTotal: number;
   }[];
   pricing: {
@@ -50,6 +53,7 @@ export interface OrderConfirmation {
   };
   delivery: { estimateText: string };
   paymentMethod: string;
+  promotion: { code: string; name: string; discount: number } | null; // the discount code used
 }
 
 function toConfirmation(order: OrderDocument): OrderConfirmation {
@@ -71,6 +75,8 @@ function toConfirmation(order: OrderDocument): OrderConfirmation {
       variantLabel: i.variantLabel,
       qty: i.qty,
       unitPrice: i.unitPrice,
+      discount: i.discount,
+      promotionName: i.promotionName,
       lineTotal: i.lineTotal,
     })),
     pricing: {
@@ -81,6 +87,13 @@ function toConfirmation(order: OrderDocument): OrderConfirmation {
     },
     delivery: { estimateText: order.deliveryZone.estimateText },
     paymentMethod: order.payment.method,
+    promotion: order.promotion
+      ? {
+          code: order.promotion.code,
+          name: order.promotion.name,
+          discount: order.promotion.discount,
+        }
+      : null,
   };
 }
 
@@ -160,8 +173,12 @@ export async function placeOrder(
           unitPrice: variant.price,
           unitCost: variant.costPrice,
           qty: line.quantity,
-          discount: 0,
-          lineTotal: variant.price * line.quantity,
+          discount: line.discount, // promotions (Phase 17), already worked out in the cart
+          lineTotal: line.lineTotal,
+          promotion: line.promotionId
+            ? new mongoose.Types.ObjectId(line.promotionId)
+            : undefined,
+          promotionName: line.promotionName,
           batchAllocations: [],
         });
       }
@@ -208,7 +225,16 @@ export async function placeOrder(
       }
 
       const orderNumber = await nextOrderNumber(settings.orderPrefix, session);
-      const subtotal = items.reduce((sum, item) => sum + item.lineTotal, 0);
+            const subtotal = items.reduce((sum, item) => sum + item.lineTotal, 0); // after item discounts
+
+      // The discount code: one use recorded for this phone (limits checked inside the transaction)
+      const code = cart.promoCode?.applied ? cart.promoCode : null;
+      if (code) {
+        await redeemCode(
+          { promotionId: code.promotionId, code: code.code, orderId, orderNumber, phone: input.phone, amount: code.discount },
+          session,
+        );
+      }
 
       const [created] = await Order.create(
         [
@@ -248,6 +274,7 @@ export async function placeOrder(
               { status: "new", at: new Date(), note: "Placed by customer" },
             ],
             flags: { stockShortfall: false, unlistedCity: !city.listed },
+                        promotion: code ? { promotion: code.promotionId, code: code.code, name: code.name, discount: code.discount } : undefined,
             source: { sessionId, ...input.source },
           },
         ],

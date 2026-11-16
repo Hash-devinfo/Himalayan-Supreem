@@ -3,6 +3,9 @@ import * as cartService from './cart.service.js';
 import { CART_COOKIE_NAME, cartCookieOptions, readCartSessionId } from './cart.cookie.js';
 import type { AddItemInput, DeliveryPreviewInput, UpdateItemInput } from './cart.validation.js';
 import { track } from '../analytics/analytics.service.js';
+import * as cartPromoService from '../promotions/cartPromo.service.js';
+import type { PromoCodeInput } from '../promotions/promotion.validation.js';
+
 
 type VariantParams = { variantId: string };
 
@@ -47,4 +50,16 @@ export async function clear(req: Request, res: Response): Promise<void> {
 export async function previewDelivery(req: Request, res: Response): Promise<void> {
   const result = await cartService.previewDelivery(sessionFrom(req), req.body as DeliveryPreviewInput);
   res.json({ success: true, ...result });
+}
+
+
+// Discount code (Phase 17)
+export async function applyPromoCode(req: Request, res: Response): Promise<void> {
+  const result = await cartPromoService.applyPromoCode(sessionFrom(req), (req.body as PromoCodeInput).code);
+  sendCart(res, result);
+}
+
+export async function removePromoCode(req: Request, res: Response): Promise<void> {
+  const result = await cartPromoService.removePromoCode(sessionFrom(req));
+  sendCart(res, result);
 }

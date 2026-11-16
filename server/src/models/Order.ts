@@ -62,7 +62,17 @@ export interface OrderItem {
   qty: number;
   discount: number;
   lineTotal: number;
+    promotion?: Types.ObjectId; // the promotion that gave this item its discount
+  promotionName?: string;
   batchAllocations: BatchAllocation[]; // filled at packing
+}
+
+// The discount code used on the order (automatic promotions are recorded on each item)
+export interface OrderPromotion {
+  promotion: Types.ObjectId;
+  code: string;
+  name: string;
+  discount: number;
 }
 
 export interface OrderPricing {
@@ -161,6 +171,7 @@ export interface IOrder {
   adminNotes?: string;
   source: OrderSource;
   reviewLinkUsedAt?: Date;
+    promotion?: OrderPromotion;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -220,6 +231,8 @@ const orderItemSchema = new Schema<OrderItem>(
     qty: { type: Number, required: true, min: 1, validate: wholeNumber },
     discount: { ...rupees, default: 0 },
     lineTotal: { ...rupees, required: true },
+        promotion: { type: Schema.Types.ObjectId, ref: 'Promotion' },
+    promotionName: { type: String },
     batchAllocations: { type: [batchAllocationSchema], default: [] },
   },
   { _id: false },
@@ -365,6 +378,17 @@ const orderSchema = new Schema<IOrder>(
     adminNotes: { type: String, trim: true, maxlength: 2000 },
     source: { type: sourceSchema, default: () => ({}) },
     reviewLinkUsedAt: { type: Date },
+        promotion: {
+      type: new Schema<OrderPromotion>(
+        {
+          promotion: { type: Schema.Types.ObjectId, ref: 'Promotion', required: true },
+          code: { type: String, required: true },
+          name: { type: String, required: true },
+          discount: { ...rupees, required: true },
+        },
+        { _id: false }
+      ),
+    },
   },
   {
     timestamps: true,

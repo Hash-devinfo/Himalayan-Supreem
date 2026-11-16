@@ -110,3 +110,9 @@ export type CreatePromotionInput = z.infer<typeof createPromotionSchema>;
 export type UpdatePromotionInput = z.infer<typeof updatePromotionSchema>;
 export type ListPromotionsQuery = z.infer<typeof listPromotionsQuerySchema>;
 export { checkRules };
+
+// The customer's code in the cart
+export const promoCodeSchema = z.strictObject({
+  code: z.string('Enter a code').trim().toUpperCase().min(1, 'Enter a code').max(30, 'This code is not valid or has expired'),
+});
+export type PromoCodeInput = z.infer<typeof promoCodeSchema>;
