@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express';
 import * as authService from './auth.service.js';
-import type { LoginInput } from './auth.validation.js';
+import type { ForgotPasswordInput, LoginInput, ResetPasswordInput } from './auth.validation.js';
+import * as passwordResetService from './passwordReset.service.js';
 import { ADMIN_COOKIE_NAME, loginCookieOptions, logoutCookieOptions } from './auth.cookie.js';
 
 export async function login(req: Request, res: Response): Promise<void> {
@@ -23,4 +24,20 @@ export async function logout(req: Request, res: Response): Promise<void> {
 
 export function me(req: Request, res: Response): void {
   res.json({ success: true, admin: req.admin });
+}
+
+
+
+// Public: "Forgot password?" The answer is always the same (see passwordReset.service)
+export async function forgotPassword(req: Request, res: Response): Promise<void> {
+  const result = await passwordResetService.requestPasswordReset((req.body as ForgotPasswordInput).email, req.ip);
+  res.json({ success: true, ...result });
+}
+
+// Public: the new password, with the token from the emailed link
+export async function resetPassword(req: Request, res: Response): Promise<void> {
+  const { token, password } = req.body as ResetPasswordInput;
+  const result = await passwordResetService.resetPassword(token, password, req.ip);
+  res.clearCookie(ADMIN_COOKIE_NAME, logoutCookieOptions()); // this browser logs in again too
+  res.json({ success: true, ...result });
 }

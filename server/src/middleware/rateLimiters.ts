@@ -52,3 +52,10 @@ export const reviewLimiter = createLimiter(
   10,
   'Too many attempts. Please try again in 15 minutes.'
 );
+
+// Admin password reset: stops email flooding and guessing reset links
+export const passwordResetLimiter = createLimiter(
+  15,
+  5,
+  'Too many password reset attempts. Please try again in 15 minutes.'
+);
