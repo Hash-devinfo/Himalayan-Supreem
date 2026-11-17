@@ -44,7 +44,7 @@ export async function getInvoice(idOrNumber: string) {
       invoiceDate: formatPktDate(order.createdAt),
       orderStatus: statusLabel(order.status),
       seller: {
-        name: settings.store.name, // placeholder until the business sets it
+       name: settings.store.name, // placeholder until the business sets it
         email: settings.store.email ?? null,
         whatsapp: settings.store.whatsappNumber ? formatPkMobile(settings.store.whatsappNumber) : null,
         supportHours: settings.store.supportHours ?? null,

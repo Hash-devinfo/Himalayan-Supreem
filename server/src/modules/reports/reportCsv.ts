@@ -7,7 +7,7 @@ import type { fulfillmentReport } from './fulfillmentReport.service.js';
 import type { cancellationsReport } from './cancellationsReport.service.js';
 import type { analyticsReport } from './analyticsReport.service.js';
 import type { riskReport } from './riskReport.service.js';
-
+import type { promotionsReport } from './promotionReport.service.js';
 
 
 
@@ -20,7 +20,7 @@ type FulfillmentReport = Awaited<ReturnType<typeof fulfillmentReport>>;
 type CancellationsReport = Awaited<ReturnType<typeof cancellationsReport>>;
 type AnalyticsReport = Awaited<ReturnType<typeof analyticsReport>>;
 type RiskReport = Awaited<ReturnType<typeof riskReport>>;
-
+type PromotionsReport = Awaited<ReturnType<typeof promotionsReport>>;
 
 
 // "deliveredOrders" -> "Delivered orders", "codHeldAmount" -> "COD held amount"
@@ -230,6 +230,24 @@ export function riskCsv(r: RiskReport) {
         title: 'Phone numbers with refusals or cancellations',
         header: ['Phone', 'Name', 'Orders', 'Delivered', 'Refused', 'Cancelled', 'Risk level'],
         rows: r.phones.map((p) => [p.phone, p.name, p.orders, p.delivered, p.refused, p.cancelled, p.riskLevel]),
+      },
+      definitionsSection(r.definitions),
+    ]),
+  };
+}
+
+
+// ── Promotions ────────────────────────────────────────
+
+export function promotionsCsv(r: PromotionsReport) {
+  return {
+    filename: fileName('promotions', r.range),
+    csv: buildCsv(meta('Promotions and discount codes', r.range, 'Orders placed in the period'), [
+      summarySection(r.summary),
+      {
+        title: 'By promotion',
+        header: ['Promotion', 'Type', 'Code', 'Status now', 'Orders', 'Delivered', 'Open', 'Cancelled', 'Returned', 'Units delivered', 'Discount given', 'Sales after discount'],
+        rows: r.promotions.map((p) => [p.name, p.type, p.code, p.status, p.orders, p.delivered, p.open, p.cancelled, p.returned, p.unitsDelivered, p.discountGiven, p.salesAfterDiscount]),
       },
       definitionsSection(r.definitions),
     ]),

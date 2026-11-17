@@ -51,13 +51,13 @@ export interface PricedCart {
   code?: CodeResult;
 }
 
-function inScope(rule: PromotionRule, line: PricingLine): boolean {
+export function inScope(rule: PromotionRule, line: PricingLine): boolean {
   if (rule.products.length === 0 && rule.categories.length === 0) return true;
   return rule.products.includes(line.productId) || rule.categories.includes(line.categoryId);
 }
 
 // An automatic promotion on one line: percent of the line, or rupees off each unit (never below 0)
-function automaticDiscount(rule: PromotionRule, line: PricingLine): number {
+export function automaticDiscount(rule: PromotionRule, line: PricingLine): number {
   if (rule.discountType === 'percent') return Math.round((line.unitPrice * line.qty * rule.value) / 100);
   return Math.min(rule.value, line.unitPrice) * line.qty;
 }

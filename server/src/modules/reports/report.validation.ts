@@ -86,3 +86,9 @@ export type AnalyticsQuery = z.infer<typeof analyticsQuerySchema>;
 export const riskQuerySchema = checkRange(z.strictObject({ ...dateRangeQuery }));
 
 export type RiskQuery = z.infer<typeof riskQuerySchema>;
+
+
+
+export const promotionsQuerySchema = checkRange(z.strictObject({ ...dateRangeQuery }));
+
+export type PromotionsQuery = z.infer<typeof promotionsQuerySchema>;

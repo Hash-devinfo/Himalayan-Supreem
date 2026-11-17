@@ -9,6 +9,7 @@ import {
   profitQuerySchema,
   riskQuerySchema,
   salesQuerySchema,
+  promotionsQuerySchema,
 } from './report.validation.js';
 import * as salesService from './sales.service.js';
 import * as profitService from './profit.service.js';
@@ -18,7 +19,7 @@ import * as cancellationsReportService from './cancellationsReport.service.js';
 import * as reportCsv from './reportCsv.js';
 import * as analyticsReportService from './analyticsReport.service.js';
 import * as riskReportService from './riskReport.service.js';
-
+import * as promotionReportService from './promotionReport.service.js';
 
 
 // Every report: JSON by default, or a CSV download with &format=csv
@@ -71,5 +72,13 @@ export async function risk(req: Request, res: Response): Promise<void> {
   const query = parseOrThrow(riskQuerySchema, req.query);
   const report = await riskReportService.riskReport(query);
   if (query.format === 'csv') return sendCsv(res, reportCsv.riskCsv(report));
+  res.json({ success: true, ...report });
+}
+
+
+export async function promotions(req: Request, res: Response): Promise<void> {
+  const query = parseOrThrow(promotionsQuerySchema, req.query);
+  const report = await promotionReportService.promotionsReport(query);
+  if (query.format === 'csv') return sendCsv(res, reportCsv.promotionsCsv(report));
   res.json({ success: true, ...report });
 }

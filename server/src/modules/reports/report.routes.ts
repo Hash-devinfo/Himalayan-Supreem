@@ -27,3 +27,6 @@ reportAdminRoutes.get("/analytics", reportController.analytics);
 
 // Risk overview: refusals and cancellations by city and by phone number
 reportAdminRoutes.get("/risk", reportController.risk);
+
+// Promotions and discount codes: orders, discount given and sales per promotion
+reportAdminRoutes.get("/promotions", reportController.promotions);

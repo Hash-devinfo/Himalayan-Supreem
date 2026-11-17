@@ -8,7 +8,12 @@ import type { PaginatedResult } from "./product.service.js";
 import type { ListProductsPublicQuery } from "./product.validation.js";
 import Batch from "../../models/Batch.js";
 import { formatPktDate } from "../../utils/dates.js";
-import { sellableExpiryCutoff } from '../inventory/expiry.js';
+import { sellableExpiryCutoff } from "../inventory/expiry.js";
+import {
+  bestSale,
+  liveSaleRules,
+  type PublicSale,
+} from "../promotions/salePrice.js";
 
 // ── Public shapes: exactly what customers are allowed to see ──
 
@@ -24,6 +29,7 @@ export interface PublicProductCard {
   inStock: boolean;
   ratingAvg: number;
   ratingCount: number;
+  sale?: PublicSale & { minSalePrice: number; maxSalePrice: number };
 }
 
 export interface PublicVariant {
@@ -36,7 +42,10 @@ export interface PublicVariant {
   inStock: boolean;
 }
 
-export interface PublicProductDetail extends Omit<PublicProductCard, "image"> {
+export interface PublicProductDetail extends Omit<
+  PublicProductCard,
+  "image" | "sale"
+> {
   description?: string;
   images: { url: string; alt: string }[];
   ingredients?: string;
@@ -47,6 +56,7 @@ export interface PublicProductDetail extends Omit<PublicProductCard, "image"> {
   claims: string[];
   seo?: { title?: string; description?: string };
   variants: PublicVariant[];
+  sale?: PublicSale;
 }
 
 export interface SizeOption {
@@ -60,6 +70,7 @@ export interface PublicVariant {
   sizeValue: number;
   sizeUnit: SizeUnit;
   price: number;
+  salePrice?: number;
   inStock: boolean;
   // Earliest-expiring batch that can still be sold (shown on the product page)
   batch?: PublicBatchInfo;
@@ -79,6 +90,15 @@ type PopulatedCategory =
   | Types.ObjectId
   | null
   | undefined;
+
+function categoryIdOf(
+  category: PopulatedCategory | { _id: Types.ObjectId },
+): string | undefined {
+  if (!category) return undefined;
+  if (typeof category === "object" && "_id" in category)
+    return String(category._id);
+  return String(category);
+}
 
 function categoryInfo(
   category: PopulatedCategory,
@@ -169,8 +189,19 @@ export async function listPublicProducts(
     Product.countDocuments(filter),
   ]);
 
+  const saleRules = await liveSaleRules();
+
   const items: PublicProductCard[] = docs.map((doc) => {
     const firstImage = doc.images[0];
+    const categoryId = categoryIdOf(doc.category as PopulatedCategory);
+    const low =
+      doc.minPrice !== undefined
+        ? bestSale(saleRules, doc._id, categoryId, doc.minPrice)
+        : undefined;
+    const high =
+      doc.maxPrice !== undefined
+        ? bestSale(saleRules, doc._id, categoryId, doc.maxPrice)
+        : undefined;
     return {
       id: doc._id.toString(),
       name: doc.name,
@@ -185,6 +216,14 @@ export async function listPublicProducts(
       inStock: doc.inStock,
       ratingAvg: doc.ratingAvg,
       ratingCount: doc.ratingCount,
+      sale:
+        low && high
+          ? {
+              ...low.sale,
+              minSalePrice: low.salePrice,
+              maxSalePrice: high.salePrice,
+            }
+          : undefined,
     };
   });
 
@@ -247,6 +286,15 @@ export async function getPublicProductBySlug(
   const batchByVariant = await earliestSellableBatches(
     variants.map((variant) => variant._id),
   );
+  const saleRules = await liveSaleRules();
+  const categoryId = categoryIdOf(product.category as PopulatedCategory);
+  const saleByVariant = new Map(
+    variants.map((variant) => [
+      variant._id.toString(),
+      bestSale(saleRules, product._id, categoryId, variant.price),
+    ]),
+  );
+  const firstSale = [...saleByVariant.values()].find(Boolean);
   return {
     id: product._id.toString(),
     name: product.name,
@@ -274,9 +322,11 @@ export async function getPublicProductBySlug(
       sizeValue: variant.sizeValue,
       sizeUnit: variant.sizeUnit,
       price: variant.price,
+      salePrice: saleByVariant.get(variant._id.toString())?.salePrice,
       inStock: variant.availableQty > 0,
       batch: batchByVariant.get(variant._id.toString()),
     })),
+    sale: firstSale?.sale,
   };
 }
 
