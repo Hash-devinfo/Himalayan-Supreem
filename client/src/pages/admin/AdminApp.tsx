@@ -4,6 +4,9 @@ import RequireAdmin from '../../features/admin/auth/RequireAdmin';
 import AdminLayout from '../../layouts/AdminLayout';
 import AdminLoginPage from './AdminLoginPage';
 import AdminDashboardPage from './AdminDashboardPage';
+import ForgotPasswordPage from './ForgotPasswordPage';
+import ResetPasswordPage from './ResetPasswordPage';
+
 
 // Paths here are relative to /admin
 export default function AdminApp() {
@@ -11,7 +14,8 @@ export default function AdminApp() {
     <AdminAuthProvider>
       <Routes>
         <Route path="login" element={<AdminLoginPage />} />
-
+        <Route path="forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="reset-password" element={<ResetPasswordPage />} />
         <Route element={<RequireAdmin />}>
           <Route element={<AdminLayout />}>
             <Route index element={<AdminDashboardPage />} />

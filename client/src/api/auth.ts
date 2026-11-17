@@ -6,9 +6,18 @@ interface AdminResponse {
   admin: Admin;
 }
 
+interface MessageResponse {
+  success: true;
+  message: string;
+}
+
 export const authApi = {
   login: (email: string, password: string) =>
     api.post<AdminResponse>('/admin/auth/login', { email, password }),
-  logout: () => api.post<{ success: true; message: string }>('/admin/auth/logout'),
+  logout: () => api.post<MessageResponse>('/admin/auth/logout'),
   me: () => api.get<AdminResponse>('/admin/auth/me'),
+  forgotPassword: (email: string) =>
+    api.post<MessageResponse>('/admin/auth/forgot-password', { email }),
+  resetPassword: (token: string, password: string, confirmPassword: string) =>
+    api.post<MessageResponse>('/admin/auth/reset-password', { token, password, confirmPassword }),
 };
