@@ -12,7 +12,29 @@ export interface ReportRange {
   to: string;
 }
 
-export interface SalesReport {
+export type SalesGroup = 'day' | 'product' | 'variant' | 'category' | 'courier';
+
+// groupBy=day: one row per day that had deliveries (days with none are missing)
+export interface SalesDayRow {
+  key: string; // YYYY-MM-DD
+  label: string;
+  orders: number;
+  sales: number;
+  deliveryCharges: number;
+}
+
+// groupBy=product: biggest sellers first
+export interface SalesProductRow {
+  productId: string;
+  label: string;
+  orders: number;
+  qty: number;
+  gross: number;
+  discounts: number;
+  sales: number;
+}
+
+export interface SalesReport<Row = SalesDayRow> {
   success: true;
   range: ReportRange;
   summary: {
@@ -27,6 +49,8 @@ export interface SalesReport {
     averageOrderValue: number;
   };
   placed: { total: number; cancelled: number; open: number; returned: number };
+  groupBy: SalesGroup;
+  rows: Row[];
 }
 
 export interface FulfillmentReport {
@@ -46,7 +70,8 @@ export interface FulfillmentReport {
 }
 
 export const reportsApi = {
-  sales: (query: ReportRangeQuery = {}) => api.get<SalesReport>(withQuery('/admin/reports/sales', query)),
+  sales: <Row = SalesDayRow>(query: ReportRangeQuery & { groupBy?: SalesGroup } = {}) =>
+    api.get<SalesReport<Row>>(withQuery('/admin/reports/sales', query)),
   fulfillment: (query: ReportRangeQuery = {}) =>
     api.get<FulfillmentReport>(withQuery('/admin/reports/fulfillment', query)),
 };

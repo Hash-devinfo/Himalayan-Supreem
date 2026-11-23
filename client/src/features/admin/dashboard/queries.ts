@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { inventoryApi } from '../../../api/inventory';
 import { ordersApi, type OrderStatus } from '../../../api/orders';
 import { refundsApi } from '../../../api/refunds';
-import { reportsApi } from '../../../api/reports';
+import { reportsApi, type SalesProductRow } from '../../../api/reports';
 import { reviewsAdminApi } from '../../../api/reviews';
 import { daysAgo, pktDateString } from '../../../lib/format';
 
@@ -37,22 +37,40 @@ export function useOrderPipeline() {
   });
 }
 
+// Last 30 days: summary numbers plus one row per delivery day (for the line chart)
 export function useSalesStats() {
   return useQuery({
     queryKey: [...DASHBOARD_KEY, 'sales'],
     queryFn: async () => {
       const today = pktDateString();
       const [last30Days, todayOnly] = await Promise.all([
-        reportsApi.sales(),
+        reportsApi.sales({ groupBy: 'day' }),
         reportsApi.sales({ from: today, to: today }),
       ]);
       return {
         range: last30Days.range,
         summary: last30Days.summary,
+        daily: last30Days.rows,
         placedLast30Days: last30Days.placed.total,
         placedToday: todayOnly.placed.total,
       };
     },
+  });
+}
+
+// Last 30 days: best-selling products (for the bar chart)
+export function useTopProducts() {
+  return useQuery({
+    queryKey: [...DASHBOARD_KEY, 'top-products'],
+    queryFn: () => reportsApi.sales<SalesProductRow>({ groupBy: 'product' }),
+  });
+}
+
+// Last 30 days: where the orders placed are now (for the status breakdown)
+export function useStatusMix() {
+  return useQuery({
+    queryKey: [...DASHBOARD_KEY, 'status-mix'],
+    queryFn: () => reportsApi.fulfillment(),
   });
 }
 
