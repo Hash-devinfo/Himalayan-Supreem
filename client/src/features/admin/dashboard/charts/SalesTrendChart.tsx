@@ -3,7 +3,8 @@ import { ChartLine } from 'lucide-react';
 import type { SalesDayRow } from '../../../../api/reports';
 import Skeleton from '../../../../components/ui/Skeleton';
 import { formatCount, formatDay, formatRs } from '../../../../lib/format';
-import { CHART, prefersReducedMotion } from '../chartTheme';
+import { useTheme } from '../../../theme/useTheme';
+import { CHART_COLORS, prefersReducedMotion } from '../chartTheme';
 import { EmptyState, Panel, PanelError } from '../DashboardPanel';
 import { useSalesStats } from '../queries';
 
@@ -47,6 +48,8 @@ function SalesTooltip({ active, payload }: { active?: boolean; payload?: Readonl
 
 export default function SalesTrendChart() {
   const query = useSalesStats();
+    const { resolvedTheme } = useTheme();
+  const CHART = CHART_COLORS[resolvedTheme];
 
   if (query.isPending) {
     return (

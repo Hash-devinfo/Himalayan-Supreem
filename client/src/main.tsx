@@ -6,11 +6,15 @@ import { queryClient } from './lib/queryClient';
 import { router } from './router';
 import '@fontsource-variable/manrope';
 import './index.css';
+import ThemeProvider from './features/theme/ThemeProvider';
+
 
 createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
-    </QueryClientProvider>
+    <StrictMode>
+    <ThemeProvider>
+      <QueryClientProvider client={queryClient}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>
+    </ThemeProvider>
   </StrictMode>,
 );

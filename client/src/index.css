@@ -1,5 +1,6 @@
 @import "tailwindcss";
-
+/* dark: variant for the rare case a class must differ in dark mode, e.g. dark:hidden */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 /* Sage and stone theme: these become classes like bg-canvas, text-ink, border-line */
 @theme {
   --font-sans: "Manrope Variable", ui-sans-serif, system-ui, sans-serif;
@@ -40,6 +41,20 @@
 
   ::selection {
     background-color: var(--color-sage-soft);
+  }
+  :root[data-theme="dark"] {
+    --color-canvas: #141513;
+    --color-surface: #1d1f1b;
+    --color-ink: #ecebe4;
+    --color-ink-hover: #d4d3cb;
+    --color-muted: #a3a89b;
+    --color-line: #2f322c;
+    --color-sage: #9fb594;
+    --color-sage-soft: #263023;
+    --color-danger: #f08a78;
+    --color-danger-soft: #3a1f1a;
+    --color-warning: #e0b25c;
+    --color-warning-soft: #352a14;
   }
 }
 

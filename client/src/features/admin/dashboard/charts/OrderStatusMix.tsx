@@ -5,6 +5,8 @@ import { formatCount } from '../../../../lib/format';
 import { STATUS_GROUPS } from '../chartTheme';
 import { EmptyState, Panel, PanelError, PanelLink } from '../DashboardPanel';
 import { useStatusMix } from '../queries';
+import { useTheme } from '../../../theme/useTheme';
+
 
 function percent(count: number, total: number): string {
   if (!total || !count) return '0%';
@@ -15,6 +17,7 @@ function percent(count: number, total: number): string {
 export default function OrderStatusMix() {
   const query = useStatusMix();
   const [highlight, setHighlight] = useState<string | null>(null);
+    const { resolvedTheme } = useTheme();
   const action = <PanelLink to="/admin/orders">Orders</PanelLink>;
 
   if (query.isPending) {
@@ -73,7 +76,7 @@ export default function OrderStatusMix() {
                   className={`h-full min-w-[4px] transition-opacity duration-200 ${
                     highlight && highlight !== group.key ? 'opacity-25' : 'opacity-100'
                   }`}
-                  style={{ width: `${(group.count / total) * 100}%`, backgroundColor: group.color }}
+                  style={{ width: `${(group.count / total) * 100}%`, backgroundColor: group.colors[resolvedTheme] }}
                 />
               ))}
           </div>
@@ -91,7 +94,7 @@ export default function OrderStatusMix() {
                   group.count === 0 ? 'text-muted' : ''
                 }`}
               >
-                <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ backgroundColor: group.color }} aria-hidden="true" />
+                <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ backgroundColor: group.colors[resolvedTheme] }} aria-hidden="true" />
                 <span className="flex-1 truncate">{group.label}</span>
                 <span className="font-medium tabular-nums">{formatCount(group.count)}</span>
                 <span className="w-10 text-right text-xs tabular-nums text-muted">{percent(group.count, total)}</span>

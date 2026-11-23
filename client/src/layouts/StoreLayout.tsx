@@ -1,5 +1,6 @@
 import { Link, NavLink, Outlet } from 'react-router';
 import { STORE_NAME } from '../lib/store';
+import ThemeToggle from '../components/ui/ThemeToggle';
 
 const navClass = ({ isActive }: { isActive: boolean }) =>
   `transition-colors hover:text-ink ${isActive ? 'text-ink' : 'text-muted'}`;
@@ -12,11 +13,14 @@ export default function StoreLayout() {
         <Link to="/" className="text-lg font-medium tracking-tight">
             {STORE_NAME}
           </Link>
-          <nav className="flex gap-6 text-sm">
-            <NavLink to="/" end className={navClass}>
-              Home
-            </NavLink>
-          </nav>
+          <div className="flex items-center gap-6">
+            <nav className="flex gap-6 text-sm">
+              <NavLink to="/" end className={navClass}>
+                Home
+              </NavLink>
+            </nav>
+            <ThemeToggle />
+          </div>
         </div>
       </header>
 

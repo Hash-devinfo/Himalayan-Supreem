@@ -2,6 +2,8 @@ import type { ReactNode } from 'react';
 import { Link } from 'react-router';
 import { ArrowLeft } from 'lucide-react';
 import { STORE_NAME } from '../../../lib/store';
+import ThemeToggle from '../../../components/ui/ThemeToggle';
+
 
 interface AuthShellProps {
   children: ReactNode;
@@ -25,7 +27,8 @@ export default function AuthShell({ children, footer }: AuthShellProps) {
         <p className="text-xs text-muted">© {new Date().getFullYear()} {STORE_NAME}</p>
       </section>
 
-      <section className="flex items-center justify-center px-4 py-12">
+      <section className="relative flex items-center justify-center px-4 py-12">
+        <ThemeToggle className="absolute right-4 top-4" />
         <div className="w-full max-w-sm motion-safe:animate-fade-up">
           <p className="mb-6 text-center text-lg font-medium tracking-tight md:hidden">{STORE_NAME}</p>
           {children}

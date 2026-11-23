@@ -4,6 +4,8 @@ import { ExternalLink, LogOut, Menu, X } from 'lucide-react';
 import { useAdminAuth } from '../features/admin/auth/useAdminAuth';
 import { ADMIN_NAV, adminHref, findNavItem } from '../features/admin/navigation';
 import { STORE_NAME } from '../lib/store';
+import ThemeToggle from '../components/ui/ThemeToggle';
+
 
 const linkClass = ({ isActive }: { isActive: boolean }) =>
   `flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${
@@ -82,7 +84,7 @@ export default function AdminLayout() {
       {/* Phone menu */}
       <div className={`fixed inset-0 z-40 md:hidden ${menuOpen ? '' : 'pointer-events-none'}`} inert={!menuOpen}>
         <div
-          className={`absolute inset-0 bg-ink/40 transition-opacity duration-200 ${menuOpen ? 'opacity-100' : 'opacity-0'}`}
+          className={`absolute inset-0 bg-black/50 transition-opacity duration-200 ${menuOpen ? 'opacity-100' : 'opacity-0'}`}
           onClick={() => setMenuOpen(false)}
           aria-hidden="true"
         />
@@ -121,6 +123,7 @@ export default function AdminLayout() {
           <p className="font-medium">{current?.label ?? 'Admin'}</p>
 
           <div className="ml-auto flex items-center gap-3 text-sm">
+            <ThemeToggle />
             <span className="hidden text-muted sm:inline">{admin?.name}</span>
             <button
               type="button"

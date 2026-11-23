@@ -5,6 +5,22 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#f4f3ee" />
+        <!-- Applies the saved or device theme before the page draws. Key must match src/lib/theme.ts -->
+    <script>
+      (function () {
+        try {
+          var pref = localStorage.getItem('hs-theme');
+          var dark =
+            pref === 'dark' ||
+            (pref !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          var theme = dark ? 'dark' : 'light';
+          document.documentElement.dataset.theme = theme;
+          document.documentElement.style.colorScheme = theme;
+          var meta = document.querySelector('meta[name="theme-color"]');
+          if (meta) meta.setAttribute('content', dark ? '#141513' : '#f4f3ee');
+        } catch (e) {}
+      })();
+    </script>
     <title>Himalayan Supreme</title>
   </head>
   <body>
