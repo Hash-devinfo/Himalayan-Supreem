@@ -17,11 +17,21 @@ import PackingSlipPage from "./orders/PackingSlipPage";
 import ProductFormPage from "./products/ProductFormPage";
 import ProductsListPage from "./products/ProductsListPage";
 import CategoriesPage from "./categories/CategoriesPage";
-import CustomerDetailPage from './customers/CustomerDetailPage';
-import CustomersListPage from './customers/CustomersListPage';
+import CustomerDetailPage from "./customers/CustomerDetailPage";
+import CustomersListPage from "./customers/CustomersListPage";
+import RefundDetailPage from "./refunds/RefundDetailPage";
+import RefundsListPage from "./refunds/RefundsListPage";
 
 // Sections that have their real pages; the rest still show "being built"
-const BUILT_SECTIONS = new Set(['orders', 'products', 'inventory', 'categories', 'settings', 'customers']);
+const BUILT_SECTIONS = new Set([
+  "orders",
+  "products",
+  "inventory",
+  "categories",
+  "settings",
+  "customers",
+  "refunds",
+]);
 
 // Paths here are relative to /admin
 export default function AdminApp() {
@@ -49,6 +59,9 @@ export default function AdminApp() {
             {/* Customers */}
             <Route path="customers" element={<CustomersListPage />} />
             <Route path="customers/:phone" element={<CustomerDetailPage />} />
+            {/* Refunds */}
+            <Route path="refunds" element={<RefundsListPage />} />
+            <Route path="refunds/:refundId" element={<RefundDetailPage />} />
             {/* Products */}
             <Route path="products" element={<ProductsListPage />} />
             <Route path="products/new" element={<ProductFormPage />} />
