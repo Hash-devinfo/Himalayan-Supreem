@@ -79,3 +79,12 @@ export const MAX_UNANSWERED_CALLS = 3;
 export function countUnanswered(order: Pick<OrderDetail, 'contactAttempts'>): number {
   return order.contactAttempts.filter((call) => UNANSWERED_OUTCOMES.includes(call.outcome)).length;
 }
+
+// Same lists as the server's invoice.service.ts, packing.service.ts and fulfillment.service.ts
+export const INVOICE_STATUSES: readonly OrderStatus[] = [
+  'confirmed', 'packing', 'shipped', 'delivered', 'delivery_failed', 'returned', 'refund_pending', 'refunded',
+];
+export const PACKED_OR_LATER: readonly OrderStatus[] = [
+  'packing', 'shipped', 'delivered', 'delivery_failed', 'returned', 'refund_pending', 'refunded',
+];
+export const COD_COLLECTED: readonly OrderStatus[] = ['delivered', 'refund_pending', 'refunded'];

@@ -66,3 +66,6 @@ export function formatDate(iso: string): string {
     new Date(iso),
   );
 }
+
+// "2026-11-24" (a Pakistan date from the server) -> "24 Nov 2026"
+export const formatIsoDay = (isoDate: string) => formatDate(`${isoDate}T00:00:00Z`);

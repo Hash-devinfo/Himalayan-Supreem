@@ -191,6 +191,17 @@ export const ordersApi = {
     api.post<OrderChangeResponse>(`${orderPath(idOrNumber)}/ship`, body),
   updateContact: (idOrNumber: string, body: UpdateContactInput) =>
     api.patch<UpdateContactResponse>(`${orderPath(idOrNumber)}/contact`, body),
+    deliver: (idOrNumber: string, body: { amountCollected?: number; note?: string }) =>
+    api.post<OrderChangeResponse>(`${orderPath(idOrNumber)}/deliver`, body),
+  failDelivery: (idOrNumber: string, body: { reason: DeliveryFailureReason; note?: string }) =>
+    api.post<OrderChangeResponse & { whatsappLink: string }>(`${orderPath(idOrNumber)}/fail`, body),
+  returnOrder: (
+    idOrNumber: string,
+    body: { items: { variantId: string; decision: ReturnDecision; reason?: string }[]; note?: string },
+  ) => api.post<OrderChangeResponse>(`${orderPath(idOrNumber)}/return`, body),
+  // The courier paid the store the COD money for these orders (all or nothing)
+  remit: (body: { orders: string[]; reference: string; remittedOn?: string }) =>
+    api.post<{ success: true; count: number; total: number; orders: string[] }>('/admin/orders/remit', body),
 };
 export type ContactOutcome =
   | "no_answer"
@@ -209,7 +220,8 @@ export type PaymentStatus =
   | "partially_refunded";
 export type Courier = "tcs" | "postex" | "leopards";
 export type CancellationSource = "status_page" | "whatsapp" | "admin";
-
+export type DeliveryFailureReason = 'refused' | 'uncollected' | 'address_issue' | 'other';
+export type ReturnDecision = 'restock' | 'write_off';
 export interface OrderDetail {
   _id: string;
   orderNumber: string;

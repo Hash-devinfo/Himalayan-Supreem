@@ -78,3 +78,25 @@
     @apply rounded-2xl border border-line bg-surface;
   }
 }
+
+/* Printed invoices and packing slips: always white paper, whatever the screen theme */
+@media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+  html,
+  body {
+    background: #ffffff !important;
+    color-scheme: light;
+  }
+}
+
+/* Packing slips print on A5 (Chrome and Edge; other browsers use the default page) */
+@page slip {
+  size: A5;
+  margin: 8mm;
+}
+.page-slip {
+  page: slip;
+}

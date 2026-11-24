@@ -1,6 +1,6 @@
 import { Link, useLocation, useNavigate, useParams } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, SearchX } from 'lucide-react';
+import { ArrowLeft, FileText, Printer, SearchX } from 'lucide-react';
 import { ApiError } from '../../../api/client';
 import { ordersApi, type OrderDetailResponse } from '../../../api/orders';
 import Badge from '../../../components/ui/Badge';
@@ -13,9 +13,9 @@ import { InfoList, InfoRow } from '../../../features/admin/orders/detail/InfoLis
 import OrderItemsCard from '../../../features/admin/orders/detail/OrderItemsCard';
 import OrderTimeline from '../../../features/admin/orders/detail/OrderTimeline';
 import { CANCELLATION_SOURCE_LABELS, CHANNEL_LABELS } from '../../../features/admin/orders/orderLabels';
-import { orderStatusTone } from '../../../features/admin/orders/orderStatus';
+import { INVOICE_STATUSES, PACKED_OR_LATER, orderStatusTone } from '../../../features/admin/orders/orderStatus';
 import { ORDERS_KEY } from '../../../features/admin/orders/queries';
-import { formatDateTime, timeAgo } from '../../../lib/format';
+import { formatDateTime, formatRs, timeAgo } from '../../../lib/format';
 
 function BackLink() {
   const navigate = useNavigate();
@@ -105,7 +105,29 @@ function OrderInfoCard({ data }: { data: OrderDetailResponse }) {
     </Panel>
   );
 }
+function DocumentLinks({ status, orderNumber }: { status: OrderDetailResponse['order']['status']; orderNumber: string }) {
+  const invoice = INVOICE_STATUSES.includes(status);
+  const slip = PACKED_OR_LATER.includes(status);
+  if (!invoice && !slip) return null;
+  const linkClass = 'inline-flex items-center gap-1 text-xs text-sage underline-offset-4 hover:underline';
 
+  return (
+    <div className="mt-2 flex justify-end gap-4">
+      {slip && (
+        <Link to={`/admin/orders/${orderNumber}/packing-slip`} target="_blank" rel="noopener" className={linkClass}>
+          <Printer className="h-3.5 w-3.5" aria-hidden="true" />
+          Packing slip
+        </Link>
+      )}
+      {invoice && (
+        <Link to={`/admin/orders/${orderNumber}/invoice`} target="_blank" rel="noopener" className={linkClass}>
+          <FileText className="h-3.5 w-3.5" aria-hidden="true" />
+          Invoice
+        </Link>
+      )}
+    </div>
+  );
+}
 function DetailSkeleton() {
   return (
     <div className="space-y-6">
@@ -186,7 +208,8 @@ export default function OrderDetailPage() {
           </div>
           <div className="text-right">
             <p className="text-xs text-muted">Total (cash on delivery)</p>
-            <p className="text-2xl font-medium tabular-nums">Rs {order.pricing.total.toLocaleString('en-PK')}</p>
+            <p className="text-2xl font-medium tabular-nums">{formatRs(order.pricing.total)}</p>
+            <DocumentLinks status={order.status} orderNumber={order.orderNumber} />
           </div>
         </header>
       </div>

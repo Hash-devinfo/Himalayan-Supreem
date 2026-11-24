@@ -1,20 +1,35 @@
 import { useEffect, useState } from 'react';
-import { MessageSquareWarning, PackageCheck, PhoneCall, Truck } from 'lucide-react';
+import { MessageSquareWarning, PackageCheck, PackageX, PhoneCall, RotateCcw, Truck, Wallet, CircleCheck } from 'lucide-react';
 import type { OrderDetail } from '../../../../api/orders';
 import FormAlert from '../../../../components/ui/FormAlert';
-import { timeAgo } from '../../../../lib/format';
-import { CANCELLATION_SOURCE_LABELS } from '../orderLabels';
-import { AWAITING_CALL, CANCELLABLE, MAX_UNANSWERED_CALLS, countUnanswered } from '../orderStatus';
+import { formatRs, timeAgo } from '../../../../lib/format';
+import { CANCELLATION_SOURCE_LABELS, COURIER_LABELS, FAILURE_REASON_LABELS } from '../orderLabels';
+import { AWAITING_CALL, CANCELLABLE, COD_COLLECTED, MAX_UNANSWERED_CALLS, countUnanswered } from '../orderStatus';
 import CancelOrderDialog from './CancelOrderDialog';
 import { DeclineRequestDialog, RecordRequestDialog } from './CancellationRequestDialogs';
+import { DeliverDialog, FailDeliveryDialog, ReattemptDialog } from './DeliveryResultDialogs';
 import LogCallDialog from './LogCallDialog';
 import PackOrderDialog from './PackOrderDialog';
+import RemitDialog from './RemitDialog';
+import ReturnOrderDialog from './ReturnOrderDialog';
 import ShipOrderDialog from './ShipOrderDialog';
 import UnpackOrderDialog from './UnpackOrderDialog';
 
-type DialogName = 'call' | 'cancel' | 'approve' | 'decline' | 'record' | 'pack' | 'unpack' | 'ship' | null;
+type DialogName =
+  | 'call' | 'cancel' | 'approve' | 'decline' | 'record'
+  | 'pack' | 'unpack' | 'ship'
+  | 'deliver' | 'fail' | 'reattempt' | 'return' | 'remit'
+  | null;
 
-function nextStep(order: OrderDetail, requestOpen: boolean): { title: string; hint: string } {
+function failureText(raw?: string): string {
+  if (!raw) return 'Reason not recorded';
+  const [code, ...rest] = raw.split(': '); // the server stores "reason: note"
+  const label = FAILURE_REASON_LABELS[code] ?? code;
+  return rest.length ? `${label}: ${rest.join(': ')}` : label;
+}
+
+function nextStep(order: OrderDetail, requestOpen: boolean, codHeld: boolean): { title: string; hint: string } | null {
+  const f = order.fulfillment ?? {};
   if (AWAITING_CALL.includes(order.status)) {
     const missed = countUnanswered(order);
     const left = MAX_UNANSWERED_CALLS - missed;
@@ -25,15 +40,28 @@ function nextStep(order: OrderDetail, requestOpen: boolean): { title: string; hi
       hint: `${missed} missed ${missed === 1 ? 'call' : 'calls'} · ${left} left before you can cancel for no answer.`,
     };
   }
-  if (order.status === 'confirmed') {
-    return requestOpen
-      ? { title: 'Confirmed, but the customer asked to cancel', hint: 'Decide the request above before packing.' }
-      : { title: 'Confirmed on the call', hint: 'Pack it next. Batches expiring first are suggested.' };
+  switch (order.status) {
+    case 'confirmed':
+      return requestOpen
+        ? { title: 'Confirmed, but the customer asked to cancel', hint: 'Decide the request above before packing.' }
+        : { title: 'Confirmed on the call', hint: 'Pack it next. Batches expiring first are suggested.' };
+    case 'packing':
+      return { title: 'Packed and ready to ship', hint: 'Book it with the courier, then enter the tracking number.' };
+    case 'shipped':
+      return {
+        title: `On the way${f.courier ? ` with ${COURIER_LABELS[f.courier]}` : ''}`,
+        hint: `Tracking ${f.trackingNumber ?? '—'}. Record the result when the courier reports back.`,
+      };
+    case 'delivery_failed':
+      return { title: 'Delivery failed', hint: `${failureText(f.failureReason)}. Try again, or take the parcel back.` };
+    default:
+      return codHeld
+        ? {
+            title: 'Delivered',
+            hint: `The courier still holds ${formatRs(order.payment.amountCollected ?? order.pricing.total)} for this order.`,
+          }
+        : null;
   }
-  if (order.status === 'packing') {
-    return { title: 'Packed and ready to ship', hint: 'Book it with the courier, then enter the tracking number.' };
-  }
-  return { title: '', hint: '' };
 }
 
 export default function OrderActions({ order }: { order: OrderDetail }) {
@@ -53,11 +81,12 @@ export default function OrderActions({ order }: { order: OrderDetail }) {
     setNotice(message);
   };
 
-  const awaitingCall = AWAITING_CALL.includes(order.status);
-  const cancellable = CANCELLABLE.includes(order.status);
-  const packing = order.status === 'packing';
+  const status = order.status;
+  const awaitingCall = AWAITING_CALL.includes(status);
+  const cancellable = CANCELLABLE.includes(status);
+  const codHeld = COD_COLLECTED.includes(status) && order.payment.remittanceStatus === 'pending';
   const request = order.cancellation?.requestStatus === 'requested' ? order.cancellation : undefined;
-  const step = nextStep(order, Boolean(request));
+  const step = nextStep(order, Boolean(request), codHeld);
 
   return (
     <div className="space-y-3">
@@ -89,7 +118,7 @@ export default function OrderActions({ order }: { order: OrderDetail }) {
         </div>
       )}
 
-      {(cancellable || packing) && (
+      {step && (
         <div className="card flex flex-wrap items-center gap-3 p-4">
           <div className="mr-auto min-w-0">
             <p className="text-sm font-medium">{step.title}</p>
@@ -102,13 +131,13 @@ export default function OrderActions({ order }: { order: OrderDetail }) {
               Log call
             </button>
           )}
-          {order.status === 'confirmed' && !request && (
+          {status === 'confirmed' && !request && (
             <button type="button" onClick={() => setDialog('pack')} className="btn-primary gap-2">
               <PackageCheck className="h-4 w-4" aria-hidden="true" />
               Pack order
             </button>
           )}
-          {packing && (
+          {status === 'packing' && (
             <>
               <button type="button" onClick={() => setDialog('ship')} className="btn-primary gap-2">
                 <Truck className="h-4 w-4" aria-hidden="true" />
@@ -118,6 +147,35 @@ export default function OrderActions({ order }: { order: OrderDetail }) {
                 Undo packing
               </button>
             </>
+          )}
+          {status === 'shipped' && (
+            <>
+              <button type="button" onClick={() => setDialog('deliver')} className="btn-primary gap-2">
+                <CircleCheck className="h-4 w-4" aria-hidden="true" />
+                Delivered
+              </button>
+              <button type="button" onClick={() => setDialog('fail')} className="btn-secondary text-danger">
+                Delivery failed
+              </button>
+            </>
+          )}
+          {status === 'delivery_failed' && (
+            <>
+              <button type="button" onClick={() => setDialog('reattempt')} className="btn-primary gap-2">
+                <RotateCcw className="h-4 w-4" aria-hidden="true" />
+                Try delivery again
+              </button>
+              <button type="button" onClick={() => setDialog('return')} className="btn-secondary gap-2">
+                <PackageX className="h-4 w-4" aria-hidden="true" />
+                Parcel returned
+              </button>
+            </>
+          )}
+          {codHeld && (
+            <button type="button" onClick={() => setDialog('remit')} className="btn-primary gap-2">
+              <Wallet className="h-4 w-4" aria-hidden="true" />
+              Courier paid you
+            </button>
           )}
           {cancellable && !request && (
             <button type="button" onClick={() => setDialog('record')} className="btn-secondary">
@@ -132,13 +190,7 @@ export default function OrderActions({ order }: { order: OrderDetail }) {
         </div>
       )}
 
-      <LogCallDialog
-        open={dialog === 'call'}
-        order={order}
-        onClose={close}
-        onDone={done}
-        onCancelOrder={() => setDialog('cancel')}
-      />
+      <LogCallDialog open={dialog === 'call'} order={order} onClose={close} onDone={done} onCancelOrder={() => setDialog('cancel')} />
       <CancelOrderDialog open={dialog === 'cancel'} mode="cancel" order={order} onClose={close} onDone={done} />
       <CancelOrderDialog open={dialog === 'approve'} mode="approve" order={order} onClose={close} onDone={done} />
       <DeclineRequestDialog open={dialog === 'decline'} order={order} onClose={close} onDone={done} />
@@ -146,6 +198,11 @@ export default function OrderActions({ order }: { order: OrderDetail }) {
       <PackOrderDialog open={dialog === 'pack'} order={order} onClose={close} onDone={done} />
       <UnpackOrderDialog open={dialog === 'unpack'} order={order} onClose={close} onDone={done} />
       <ShipOrderDialog open={dialog === 'ship'} order={order} onClose={close} onDone={done} />
+      <DeliverDialog open={dialog === 'deliver'} order={order} onClose={close} onDone={done} />
+      <FailDeliveryDialog open={dialog === 'fail'} order={order} onClose={close} onDone={done} />
+      <ReattemptDialog open={dialog === 'reattempt'} order={order} onClose={close} onDone={done} />
+      <ReturnOrderDialog open={dialog === 'return'} order={order} onClose={close} onDone={done} />
+      <RemitDialog open={dialog === 'remit'} order={order} onClose={close} onDone={done} />
     </div>
   );
 }

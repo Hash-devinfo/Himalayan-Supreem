@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import { Link } from 'react-router';
 import { useIsFetching, useQueryClient } from '@tanstack/react-query';
 import {
@@ -20,7 +21,6 @@ import Badge from '../../components/ui/Badge';
 import Skeleton from '../../components/ui/Skeleton';
 import { useAdminAuth } from '../../features/admin/auth/useAdminAuth';
 import OrderStatusMix from '../../features/admin/dashboard/charts/OrderStatusMix';
-import SalesTrendChart from '../../features/admin/dashboard/charts/SalesTrendChart';
 import TopProductsChart from '../../features/admin/dashboard/charts/TopProductsChart';
 import { EmptyState, ListSkeleton, Panel, PanelError, PanelLink } from '../../features/admin/dashboard/DashboardPanel';
 import {
@@ -34,6 +34,10 @@ import {
 import { orderStatusTone } from '../../features/admin/orders/orderStatus';
 import { formatCount, formatDay, formatRs, formatToday, timeAgo } from '../../lib/format';
 
+
+
+// The line chart uses Recharts (the biggest library in the admin), so it loads on its own
+const SalesTrendChart = lazy(() => import('../../features/admin/dashboard/charts/SalesTrendChart'));
 function greeting(): string {
   const hour = new Date().getHours();
   if (hour < 12) return 'Good morning';
@@ -426,7 +430,9 @@ export default function AdminDashboardPage() {
       {/* Charts */}
       <div className="grid gap-6 lg:grid-cols-5">
         <div className="lg:col-span-3">
-          <SalesTrendChart />
+          <Suspense fallback={<Skeleton className="h-[340px] w-full rounded-2xl" />}>
+            <SalesTrendChart />
+          </Suspense>
         </div>
         <div className="lg:col-span-2">
           <OrderStatusMix />

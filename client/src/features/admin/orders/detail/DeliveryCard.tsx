@@ -30,7 +30,13 @@ export default function DeliveryCard({ order }: { order: OrderDetail }) {
           <InfoRow label="Delivery failed">
             {formatDateTime(f.failedAt)}
             {f.failureReason && (
-              <span className="block text-xs text-danger">{FAILURE_REASON_LABELS[f.failureReason] ?? f.failureReason}</span>
+              <span className="block text-xs text-danger">
+                {(() => {
+                  const [code, ...rest] = f.failureReason.split(': ');
+                  const label = FAILURE_REASON_LABELS[code] ?? code;
+                  return rest.length ? `${label}: ${rest.join(': ')}` : label;
+                })()}
+              </span>
             )}
           </InfoRow>
         )}
