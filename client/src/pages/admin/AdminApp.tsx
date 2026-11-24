@@ -21,6 +21,7 @@ import CustomerDetailPage from "./customers/CustomerDetailPage";
 import CustomersListPage from "./customers/CustomersListPage";
 import RefundDetailPage from "./refunds/RefundDetailPage";
 import RefundsListPage from "./refunds/RefundsListPage";
+import ReviewsPage from "./reviews/ReviewsPage";
 
 // Sections that have their real pages; the rest still show "being built"
 const BUILT_SECTIONS = new Set([
@@ -62,6 +63,8 @@ export default function AdminApp() {
             {/* Refunds */}
             <Route path="refunds" element={<RefundsListPage />} />
             <Route path="refunds/:refundId" element={<RefundDetailPage />} />
+            {/* Reviews */}
+            <Route path="reviews" element={<ReviewsPage />} />
             {/* Products */}
             <Route path="products" element={<ProductsListPage />} />
             <Route path="products/new" element={<ProductFormPage />} />
