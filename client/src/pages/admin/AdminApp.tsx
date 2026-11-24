@@ -12,9 +12,11 @@ import InvoicePage from './orders/InvoicePage';
 import OrderDetailPage from './orders/OrderDetailPage';
 import OrdersListPage from './orders/OrdersListPage';
 import PackingSlipPage from './orders/PackingSlipPage';
+import ProductFormPage from './products/ProductFormPage';
+import ProductsListPage from './products/ProductsListPage';
 
 // Sections that have their real pages; the rest still show "being built"
-const BUILT_SECTIONS = new Set(['orders']);
+const BUILT_SECTIONS = new Set(['orders', 'products']);
 
 // Paths here are relative to /admin
 export default function AdminApp() {
@@ -35,7 +37,9 @@ export default function AdminApp() {
 
             <Route path="orders" element={<OrdersListPage />} />
             <Route path="orders/:orderNumber" element={<OrderDetailPage />} />
-
+            <Route path="products" element={<ProductsListPage />} />
+            <Route path="products/new" element={<ProductFormPage />} />
+            <Route path="products/:productId" element={<ProductFormPage />} />
             {/* Sections not built yet. Each one is swapped for its real page as we build it. */}
             {ADMIN_NAV_ITEMS.filter((item) => item.path && !BUILT_SECTIONS.has(item.path)).map((item) => (
               <Route key={item.path} path={`${item.path}/*`} element={<ComingSoonPage />} />
