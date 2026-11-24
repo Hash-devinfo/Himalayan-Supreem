@@ -113,10 +113,25 @@ export const productsAdminApi = {
   changeStatus: (id: string, status: ProductStatus) =>
     api.patch<{ success: true; product: { _id: string; status: ProductStatus } }>(`${productPath(id)}/status`, { status }),
 };
+export interface CategoryInput {
+  name?: string;
+  slug?: string;
+  description?: string;
+  sortOrder?: number;
+  status?: CategoryStatus; // only when creating
+}
+
+const categoryPath = (id: string) => `/admin/categories/${encodeURIComponent(id)}`;
 
 export const categoriesAdminApi = {
   list: (status?: CategoryStatus) =>
     api.get<{ success: true; categories: AdminCategory[] }>(withQuery('/admin/categories', { status })),
+  create: (body: CategoryInput & { name: string }) =>
+    api.post<{ success: true; category: AdminCategory }>('/admin/categories', body),
+  update: (id: string, body: Omit<CategoryInput, 'status'>) =>
+    api.patch<{ success: true; category: AdminCategory }>(categoryPath(id), body),
+  changeStatus: (id: string, status: CategoryStatus) =>
+    api.patch<{ success: true; category: AdminCategory }>(`${categoryPath(id)}/status`, { status }),
 };
 
 export interface VariantInput {
