@@ -118,3 +118,29 @@ export const categoriesAdminApi = {
   list: (status?: CategoryStatus) =>
     api.get<{ success: true; categories: AdminCategory[] }>(withQuery('/admin/categories', { status })),
 };
+
+export interface VariantInput {
+  sku?: string;
+  label?: string;
+  sizeValue?: number;
+  sizeUnit?: SizeUnit;
+  price?: number;
+  costPrice?: number;
+  shippingWeightGrams?: number;
+  lowStockThreshold?: number;
+  sortOrder?: number;
+}
+
+const variantPath = (productId: string, variantId?: string) =>
+  `${productPath(productId)}/variants${variantId ? `/${encodeURIComponent(variantId)}` : ''}`;
+
+export const variantsAdminApi = {
+  create: (
+    productId: string,
+    body: VariantInput & Required<Pick<VariantInput, 'sku' | 'label' | 'sizeValue' | 'sizeUnit' | 'price' | 'shippingWeightGrams'>>,
+  ) => api.post<{ success: true; variant: AdminVariant }>(variantPath(productId), body),
+  update: (productId: string, variantId: string, body: VariantInput) =>
+    api.patch<{ success: true; variant: AdminVariant }>(variantPath(productId, variantId), body),
+  changeStatus: (productId: string, variantId: string, status: VariantStatus) =>
+    api.patch<{ success: true; variant: AdminVariant }>(`${variantPath(productId, variantId)}/status`, { status }),
+};
