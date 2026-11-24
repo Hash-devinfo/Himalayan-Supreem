@@ -54,13 +54,35 @@ export interface OrderListResponse {
   page: number;
   pages: number;
 }
+export interface OrderChangeResponse {
+  success: true;
+  order: OrderDetail;
+  statusLabel?: string;
+}
+
+export interface LogCallResponse extends OrderChangeResponse {
+  whatsappLink?: string; // only after a missed call
+  canCancelForNoAnswer: boolean; // true after the third missed call
+}
+
+const orderPath = (idOrNumber: string) => `/admin/orders/${encodeURIComponent(idOrNumber)}`;
 
 export const ordersApi = {
   list: (query: OrderListQuery = {}) => api.get<OrderListResponse>(withQuery('/admin/orders', query)),
   // Accepts the database ID or the order number
-  get: (idOrNumber: string) => api.get<OrderDetailResponse>(`/admin/orders/${encodeURIComponent(idOrNumber)}`),
-};
+  get: (idOrNumber: string) => api.get<OrderDetailResponse>(orderPath(idOrNumber)),
 
+  logCall: (idOrNumber: string, body: { outcome: ContactOutcome; note?: string }) =>
+    api.post<LogCallResponse>(`${orderPath(idOrNumber)}/calls`, body),
+  cancel: (idOrNumber: string, reason: string) =>
+    api.post<OrderChangeResponse>(`${orderPath(idOrNumber)}/cancel`, { reason }),
+  updateNotes: (idOrNumber: string, adminNotes: string) =>
+    api.patch<OrderChangeResponse>(`${orderPath(idOrNumber)}/notes`, { adminNotes }),
+  recordCancellationRequest: (idOrNumber: string, reason?: string) =>
+    api.post<OrderChangeResponse>(`${orderPath(idOrNumber)}/cancellation-request`, reason ? { reason } : {}),
+  declineCancellationRequest: (idOrNumber: string, note: string) =>
+    api.post<OrderChangeResponse>(`${orderPath(idOrNumber)}/cancellation-request/decline`, { note }),
+};
 export type ContactOutcome = 'no_answer' | 'busy' | 'switched_off' | 'wrong_number' | 'confirmed' | 'customer_cancelled';
 export type OrderChannel = 'website' | 'whatsapp' | 'phone' | 'other';
 export type PaymentStatus = 'pending' | 'collected' | 'refused' | 'uncollected' | 'refunded' | 'partially_refunded';

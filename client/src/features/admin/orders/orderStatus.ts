@@ -1,6 +1,5 @@
 import type { BadgeTone } from '../../../components/ui/Badge';
-import { ORDER_STATUSES, type OrderFlag, type OrderStatus } from '../../../api/orders';
-
+import { ORDER_STATUSES, type ContactOutcome, type OrderDetail, type OrderFlag, type OrderStatus } from '../../../api/orders';
 // Same wording as server/src/modules/orders/orderStatus.ts
 export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   new: 'New',
@@ -69,4 +68,14 @@ export function orderStatusTone(status: OrderStatus): BadgeTone {
     default:
       return 'neutral'; // shipped, cancelled, refunded
   }
+}
+
+// Same rules as server/src/modules/orders/orderStatus.ts and order.service.ts
+export const AWAITING_CALL: readonly OrderStatus[] = ['new', 'contact_attempt_1', 'contact_attempt_2', 'contact_attempt_3'];
+export const CANCELLABLE: readonly OrderStatus[] = [...AWAITING_CALL, 'confirmed']; // before packing
+export const UNANSWERED_OUTCOMES: readonly ContactOutcome[] = ['no_answer', 'busy', 'switched_off', 'wrong_number'];
+export const MAX_UNANSWERED_CALLS = 3;
+
+export function countUnanswered(order: Pick<OrderDetail, 'contactAttempts'>): number {
+  return order.contactAttempts.filter((call) => UNANSWERED_OUTCOMES.includes(call.outcome)).length;
 }
