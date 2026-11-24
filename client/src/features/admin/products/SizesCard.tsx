@@ -106,21 +106,26 @@ export default function SizesCard({ product, variants }: { product: AdminProduct
                   <td className="px-4 py-3">
                     <Badge tone={VARIANT_STATUS_TONES[v.status]}>{VARIANT_STATUS_LABELS[v.status]}</Badge>
                   </td>
-                  <td className="px-4 py-3 text-right">
-                    <button
-                      type="button"
-                      onClick={() => setDialog({ mode: 'edit', id: v._id })}
-                      className="text-xs text-sage underline-offset-4 hover:underline"
-                    >
-                      Edit<span className="sr-only"> {v.label}</span>
-                    </button>
+                                    <td className="px-4 py-3 text-right">
+                    <span className="inline-flex gap-3">
+                      <Link to={`/admin/inventory/${product._id}/${v._id}`} className="text-xs text-sage underline-offset-4 hover:underline">
+                        Stock<span className="sr-only"> for {v.label}</span>
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={() => setDialog({ mode: 'edit', id: v._id })}
+                        className="text-xs text-sage underline-offset-4 hover:underline"
+                      >
+                        Edit<span className="sr-only"> {v.label}</span>
+                      </button>
+                    </span>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
 
-          <ul className="divide-y divide-line md:hidden">
+                    <ul className="divide-y divide-line md:hidden">
             {variants.map((v) => (
               <li key={v._id}>
                 <button
@@ -142,6 +147,12 @@ export default function SizesCard({ product, variants }: { product: AdminProduct
                     <StockCell v={v} />
                   </div>
                 </button>
+                <Link
+                  to={`/admin/inventory/${product._id}/${v._id}`}
+                  className="block px-4 pb-3 text-xs text-sage underline-offset-4 hover:underline"
+                >
+                  Stock and batches
+                </Link>
               </li>
             ))}
           </ul>

@@ -14,6 +14,7 @@ import OrdersListPage from './orders/OrdersListPage';
 import PackingSlipPage from './orders/PackingSlipPage';
 import ProductFormPage from './products/ProductFormPage';
 import ProductsListPage from './products/ProductsListPage';
+import SizeStockPage from './inventory/SizeStockPage';
 
 // Sections that have their real pages; the rest still show "being built"
 const BUILT_SECTIONS = new Set(['orders', 'products']);
@@ -34,7 +35,7 @@ export default function AdminApp() {
 
           <Route element={<AdminLayout />}>
             <Route index element={<AdminDashboardPage />} />
-
+            <Route path="inventory/:productId/:variantId" element={<SizeStockPage />} />
             <Route path="orders" element={<OrdersListPage />} />
             <Route path="orders/:orderNumber" element={<OrderDetailPage />} />
             <Route path="products" element={<ProductsListPage />} />
