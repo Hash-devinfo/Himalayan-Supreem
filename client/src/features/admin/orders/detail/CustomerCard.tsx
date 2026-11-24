@@ -1,10 +1,12 @@
 import { useState } from 'react';
+import { Link } from 'react-router';
 import { MessageCircle, Pencil, Phone } from 'lucide-react';
 import type { OrderDetailResponse } from '../../../../api/orders';
 import CopyButton from '../../../../components/ui/CopyButton';
 import { Panel } from '../../dashboard/DashboardPanel';
 import EditContactDialog from '../actions/EditContactDialog';
 import { CANCELLABLE } from '../orderStatus';
+import { phoneForUrl } from '../../../../api/customers';
 
 export default function CustomerCard({ data }: { data: OrderDetailResponse }) {
   const { order, risk, contact } = data;
@@ -79,7 +81,15 @@ export default function CustomerCard({ data }: { data: OrderDetailResponse }) {
       </div>
 
       <div className="border-t border-line p-4">
-        <p className="text-xs font-medium text-muted">History with this number</p>
+                <div className="flex items-center justify-between">
+          <p className="text-xs font-medium text-muted">History with this number</p>
+          <Link
+            to={`/admin/customers/${phoneForUrl(customer.phone)}`}
+            className="text-xs text-sage underline-offset-4 hover:underline"
+          >
+            View customer
+          </Link>
+        </div>
         <dl className="mt-2 grid grid-cols-4 gap-2 text-center">
           {history.map((item) => (
             <div key={item.label} className="rounded-lg bg-canvas px-1 py-2">
