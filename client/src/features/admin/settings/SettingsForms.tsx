@@ -70,10 +70,17 @@ export function StoreDetailsForm({ settings, savedNotice, onSaved }: SectionProp
       setError(null);
       return;
     }
-    // Empty new fields are left out (the server can't store an empty email or number)
-    if (store.email === '') delete store.email;
-    if (store.whatsappNumber === '') delete store.whatsappNumber;
-    save({ store }, 'Store details saved');
+   const { email: newEmail, whatsappNumber: newWhatsapp, ...rest } = store;
+    save(
+      {
+        store: {
+          ...rest,
+          ...(newEmail ? { email: newEmail } : {}),
+          ...(newWhatsapp ? { whatsappNumber: newWhatsapp } : {}),
+        },
+      },
+      'Store details saved',
+    );
   }
 
   const fieldClass = (key: string) => `input-field ${fieldErrors[key] ? 'border-danger' : ''}`;
