@@ -1,12 +1,17 @@
-import { MessageCircle, Phone } from 'lucide-react';
+import { useState } from 'react';
+import { MessageCircle, Pencil, Phone } from 'lucide-react';
 import type { OrderDetailResponse } from '../../../../api/orders';
 import CopyButton from '../../../../components/ui/CopyButton';
 import { Panel } from '../../dashboard/DashboardPanel';
+import EditContactDialog from '../actions/EditContactDialog';
+import { CANCELLABLE } from '../orderStatus';
 
 export default function CustomerCard({ data }: { data: OrderDetailResponse }) {
   const { order, risk, contact } = data;
   const customer = order.customerSnapshot;
   const address = customer.address;
+  const [editing, setEditing] = useState(false);
+  const canEdit = CANCELLABLE.includes(order.status);
 
   const addressLines = [address.line1, address.line2, address.area, `${address.city}, ${address.province}`].filter(
     (line): line is string => Boolean(line),
@@ -20,8 +25,19 @@ export default function CustomerCard({ data }: { data: OrderDetailResponse }) {
     { label: 'Cancelled', value: risk.cancelled, bad: false },
   ];
 
+  const editButton = canEdit ? (
+    <button
+      type="button"
+      onClick={() => setEditing(true)}
+      className="inline-flex shrink-0 items-center gap-1 text-xs text-sage underline-offset-4 hover:underline"
+    >
+      <Pencil className="h-3 w-3" aria-hidden="true" />
+      Edit
+    </button>
+  ) : undefined;
+
   return (
-    <Panel title="Customer">
+    <Panel title="Customer" action={editButton}>
       <div className="space-y-4 p-4">
         <div>
           <p className="font-medium">{customer.name}</p>
@@ -73,6 +89,8 @@ export default function CustomerCard({ data }: { data: OrderDetailResponse }) {
           ))}
         </dl>
       </div>
+
+      <EditContactDialog open={editing} order={order} onClose={() => setEditing(false)} />
     </Panel>
   );
 }

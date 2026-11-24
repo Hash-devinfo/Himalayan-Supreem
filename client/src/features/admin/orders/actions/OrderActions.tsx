@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { MessageSquareWarning, PhoneCall } from 'lucide-react';
+import { MessageSquareWarning, PackageCheck, PhoneCall, Truck } from 'lucide-react';
 import type { OrderDetail } from '../../../../api/orders';
 import FormAlert from '../../../../components/ui/FormAlert';
 import { timeAgo } from '../../../../lib/format';
@@ -8,10 +8,13 @@ import { AWAITING_CALL, CANCELLABLE, MAX_UNANSWERED_CALLS, countUnanswered } fro
 import CancelOrderDialog from './CancelOrderDialog';
 import { DeclineRequestDialog, RecordRequestDialog } from './CancellationRequestDialogs';
 import LogCallDialog from './LogCallDialog';
+import PackOrderDialog from './PackOrderDialog';
+import ShipOrderDialog from './ShipOrderDialog';
+import UnpackOrderDialog from './UnpackOrderDialog';
 
-type DialogName = 'call' | 'cancel' | 'approve' | 'decline' | 'record' | null;
+type DialogName = 'call' | 'cancel' | 'approve' | 'decline' | 'record' | 'pack' | 'unpack' | 'ship' | null;
 
-function nextStep(order: OrderDetail): { title: string; hint: string } {
+function nextStep(order: OrderDetail, requestOpen: boolean): { title: string; hint: string } {
   if (AWAITING_CALL.includes(order.status)) {
     const missed = countUnanswered(order);
     const left = MAX_UNANSWERED_CALLS - missed;
@@ -22,7 +25,14 @@ function nextStep(order: OrderDetail): { title: string; hint: string } {
       hint: `${missed} missed ${missed === 1 ? 'call' : 'calls'} · ${left} left before you can cancel for no answer.`,
     };
   }
-  if (order.status === 'confirmed') return { title: 'Confirmed on the call', hint: 'Pack it next.' };
+  if (order.status === 'confirmed') {
+    return requestOpen
+      ? { title: 'Confirmed, but the customer asked to cancel', hint: 'Decide the request above before packing.' }
+      : { title: 'Confirmed on the call', hint: 'Pack it next. Batches expiring first are suggested.' };
+  }
+  if (order.status === 'packing') {
+    return { title: 'Packed and ready to ship', hint: 'Book it with the courier, then enter the tracking number.' };
+  }
   return { title: '', hint: '' };
 }
 
@@ -45,8 +55,9 @@ export default function OrderActions({ order }: { order: OrderDetail }) {
 
   const awaitingCall = AWAITING_CALL.includes(order.status);
   const cancellable = CANCELLABLE.includes(order.status);
+  const packing = order.status === 'packing';
   const request = order.cancellation?.requestStatus === 'requested' ? order.cancellation : undefined;
-  const step = nextStep(order);
+  const step = nextStep(order, Boolean(request));
 
   return (
     <div className="space-y-3">
@@ -78,26 +89,46 @@ export default function OrderActions({ order }: { order: OrderDetail }) {
         </div>
       )}
 
-      {cancellable && (
+      {(cancellable || packing) && (
         <div className="card flex flex-wrap items-center gap-3 p-4">
           <div className="mr-auto min-w-0">
             <p className="text-sm font-medium">{step.title}</p>
             <p className="mt-0.5 text-xs text-muted">{step.hint}</p>
           </div>
+
           {awaitingCall && (
             <button type="button" onClick={() => setDialog('call')} className="btn-primary gap-2">
               <PhoneCall className="h-4 w-4" aria-hidden="true" />
               Log call
             </button>
           )}
-          {!request && (
+          {order.status === 'confirmed' && !request && (
+            <button type="button" onClick={() => setDialog('pack')} className="btn-primary gap-2">
+              <PackageCheck className="h-4 w-4" aria-hidden="true" />
+              Pack order
+            </button>
+          )}
+          {packing && (
+            <>
+              <button type="button" onClick={() => setDialog('ship')} className="btn-primary gap-2">
+                <Truck className="h-4 w-4" aria-hidden="true" />
+                Ship order
+              </button>
+              <button type="button" onClick={() => setDialog('unpack')} className="btn-secondary">
+                Undo packing
+              </button>
+            </>
+          )}
+          {cancellable && !request && (
             <button type="button" onClick={() => setDialog('record')} className="btn-secondary">
               Customer asked to cancel
             </button>
           )}
-          <button type="button" onClick={() => setDialog('cancel')} className="btn-secondary text-danger">
-            Cancel order
-          </button>
+          {cancellable && (
+            <button type="button" onClick={() => setDialog('cancel')} className="btn-secondary text-danger">
+              Cancel order
+            </button>
+          )}
         </div>
       )}
 
@@ -112,6 +143,9 @@ export default function OrderActions({ order }: { order: OrderDetail }) {
       <CancelOrderDialog open={dialog === 'approve'} mode="approve" order={order} onClose={close} onDone={done} />
       <DeclineRequestDialog open={dialog === 'decline'} order={order} onClose={close} onDone={done} />
       <RecordRequestDialog open={dialog === 'record'} order={order} onClose={close} onDone={done} />
+      <PackOrderDialog open={dialog === 'pack'} order={order} onClose={close} onDone={done} />
+      <UnpackOrderDialog open={dialog === 'unpack'} order={order} onClose={close} onDone={done} />
+      <ShipOrderDialog open={dialog === 'ship'} order={order} onClose={close} onDone={done} />
     </div>
   );
 }

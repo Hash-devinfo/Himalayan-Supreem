@@ -1,25 +1,28 @@
-import { api, withQuery } from './client';
+import { api, withQuery } from "./client";
 
 // Same list as server/src/constants/enums.ts
 export const ORDER_STATUSES = [
-  'new',
-  'contact_attempt_1',
-  'contact_attempt_2',
-  'contact_attempt_3',
-  'confirmed',
-  'packing',
-  'shipped',
-  'delivered',
-  'delivery_failed',
-  'returned',
-  'cancelled',
-  'refund_pending',
-  'refunded',
+  "new",
+  "contact_attempt_1",
+  "contact_attempt_2",
+  "contact_attempt_3",
+  "confirmed",
+  "packing",
+  "shipped",
+  "delivered",
+  "delivery_failed",
+  "returned",
+  "cancelled",
+  "refund_pending",
+  "refunded",
 ] as const;
 export type OrderStatus = (typeof ORDER_STATUSES)[number];
 
-export type RiskLevel = 'normal' | 'high' | 'blocked';
-export type OrderFlag = 'unlistedCity' | 'stockShortfall' | 'cancellationRequested';
+export type RiskLevel = "normal" | "high" | "blocked";
+export type OrderFlag =
+  | "unlistedCity"
+  | "stockShortfall"
+  | "cancellationRequested";
 
 export interface OrderListItem {
   id: string;
@@ -33,7 +36,11 @@ export interface OrderListItem {
   total: number;
   units: number;
   calls: number;
-  flags: { unlistedCity?: boolean; stockShortfall?: boolean; cancellationRequested: boolean };
+  flags: {
+    unlistedCity?: boolean;
+    stockShortfall?: boolean;
+    cancellationRequested: boolean;
+  };
   risk: RiskLevel;
 }
 
@@ -65,29 +72,143 @@ export interface LogCallResponse extends OrderChangeResponse {
   canCancelForNoAnswer: boolean; // true after the third missed call
 }
 
-const orderPath = (idOrNumber: string) => `/admin/orders/${encodeURIComponent(idOrNumber)}`;
+export interface PackingBatchChoice {
+  batchId: string;
+  batchNumber: string;
+  expiryDate: string; // YYYY-MM-DD
+  daysToExpiry: number;
+  quantityRemaining: number;
+}
+
+export interface PackingPlanItem {
+  variantId: string;
+  name: string;
+  variantLabel: string;
+  sku: string;
+  qty: number;
+  batches: PackingBatchChoice[]; // sellable only, earliest expiry first
+  suggested: { batchId: string; qty: number }[];
+  shortBy: number;
+}
+
+export interface PackingPlanResponse {
+  success: true;
+  orderNumber: string;
+  items: PackingPlanItem[];
+  canPack: boolean;
+}
+
+export interface PackAllocationInput {
+  variantId: string;
+  allocations: { batchId: string; qty: number }[];
+}
+
+export interface CourierOption {
+  code: Courier;
+  name: string;
+  mode: "manual" | "api";
+}
+
+export interface ShipInput {
+  courier?: Courier;
+  trackingNumber?: string;
+  courierFee?: number;
+  codCharge?: number;
+  note?: string;
+}
+
+export interface UpdateContactInput {
+  name?: string;
+  phone?: string;
+  email?: string | null; // null removes the email
+  address?: {
+    line1: string;
+    line2?: string;
+    area?: string;
+    cityId?: string; // a city from the list...
+    cityName?: string; // ...or a typed city with its province
+    province?: string;
+  };
+  recalculateDelivery?: boolean;
+  note?: string;
+}
+
+export interface UpdateContactResponse extends OrderChangeResponse {
+  changed: boolean;
+  delivery?: {
+    agreedCharge: number;
+    newCityCharge: number;
+    zone: string;
+    estimate: string;
+    applied: boolean;
+  };
+}
+const orderPath = (idOrNumber: string) =>
+  `/admin/orders/${encodeURIComponent(idOrNumber)}`;
 
 export const ordersApi = {
-  list: (query: OrderListQuery = {}) => api.get<OrderListResponse>(withQuery('/admin/orders', query)),
+  list: (query: OrderListQuery = {}) =>
+    api.get<OrderListResponse>(withQuery("/admin/orders", query)),
   // Accepts the database ID or the order number
-  get: (idOrNumber: string) => api.get<OrderDetailResponse>(orderPath(idOrNumber)),
+  get: (idOrNumber: string) =>
+    api.get<OrderDetailResponse>(orderPath(idOrNumber)),
 
-  logCall: (idOrNumber: string, body: { outcome: ContactOutcome; note?: string }) =>
-    api.post<LogCallResponse>(`${orderPath(idOrNumber)}/calls`, body),
+  logCall: (
+    idOrNumber: string,
+    body: { outcome: ContactOutcome; note?: string },
+  ) => api.post<LogCallResponse>(`${orderPath(idOrNumber)}/calls`, body),
   cancel: (idOrNumber: string, reason: string) =>
-    api.post<OrderChangeResponse>(`${orderPath(idOrNumber)}/cancel`, { reason }),
+    api.post<OrderChangeResponse>(`${orderPath(idOrNumber)}/cancel`, {
+      reason,
+    }),
   updateNotes: (idOrNumber: string, adminNotes: string) =>
-    api.patch<OrderChangeResponse>(`${orderPath(idOrNumber)}/notes`, { adminNotes }),
+    api.patch<OrderChangeResponse>(`${orderPath(idOrNumber)}/notes`, {
+      adminNotes,
+    }),
   recordCancellationRequest: (idOrNumber: string, reason?: string) =>
-    api.post<OrderChangeResponse>(`${orderPath(idOrNumber)}/cancellation-request`, reason ? { reason } : {}),
+    api.post<OrderChangeResponse>(
+      `${orderPath(idOrNumber)}/cancellation-request`,
+      reason ? { reason } : {},
+    ),
   declineCancellationRequest: (idOrNumber: string, note: string) =>
-    api.post<OrderChangeResponse>(`${orderPath(idOrNumber)}/cancellation-request/decline`, { note }),
+    api.post<OrderChangeResponse>(
+      `${orderPath(idOrNumber)}/cancellation-request/decline`,
+      { note },
+    ),
+  packingPlan: (idOrNumber: string) =>
+    api.get<PackingPlanResponse>(`${orderPath(idOrNumber)}/packing`),
+  pack: (idOrNumber: string, items: PackAllocationInput[]) =>
+    api.post<OrderChangeResponse>(`${orderPath(idOrNumber)}/pack`, { items }),
+  unpack: (idOrNumber: string, reason: string) =>
+    api.post<OrderChangeResponse>(`${orderPath(idOrNumber)}/unpack`, {
+      reason,
+    }),
+  couriers: () =>
+    api.get<{ success: true; couriers: CourierOption[] }>(
+      "/admin/orders/couriers",
+    ),
+  ship: (idOrNumber: string, body: ShipInput) =>
+    api.post<OrderChangeResponse>(`${orderPath(idOrNumber)}/ship`, body),
+  updateContact: (idOrNumber: string, body: UpdateContactInput) =>
+    api.patch<UpdateContactResponse>(`${orderPath(idOrNumber)}/contact`, body),
 };
-export type ContactOutcome = 'no_answer' | 'busy' | 'switched_off' | 'wrong_number' | 'confirmed' | 'customer_cancelled';
-export type OrderChannel = 'website' | 'whatsapp' | 'phone' | 'other';
-export type PaymentStatus = 'pending' | 'collected' | 'refused' | 'uncollected' | 'refunded' | 'partially_refunded';
-export type Courier = 'tcs' | 'postex' | 'leopards';
-export type CancellationSource = 'status_page' | 'whatsapp' | 'admin';
+export type ContactOutcome =
+  | "no_answer"
+  | "busy"
+  | "switched_off"
+  | "wrong_number"
+  | "confirmed"
+  | "customer_cancelled";
+export type OrderChannel = "website" | "whatsapp" | "phone" | "other";
+export type PaymentStatus =
+  | "pending"
+  | "collected"
+  | "refused"
+  | "uncollected"
+  | "refunded"
+  | "partially_refunded";
+export type Courier = "tcs" | "postex" | "leopards";
+export type CancellationSource = "status_page" | "whatsapp" | "admin";
 
 export interface OrderDetail {
   _id: string;
@@ -102,6 +223,7 @@ export interface OrderDetail {
       line2?: string;
       area?: string;
       city: string;
+      cityRef?: string;
       cityUnlisted: boolean;
       province: string;
     };
@@ -119,24 +241,47 @@ export interface OrderDetail {
     discount: number;
     lineTotal: number;
     promotionName?: string;
-    batchAllocations: { batch: string; batchNumber: string; expiryDate: string; qty: number }[];
+    batchAllocations: {
+      batch: string;
+      batchNumber: string;
+      expiryDate: string;
+      qty: number;
+    }[];
   }[];
-  pricing: { subtotal: number; discountTotal: number; deliveryCharge: number; total: number };
+  pricing: {
+    subtotal: number;
+    discountTotal: number;
+    deliveryCharge: number;
+    total: number;
+  };
   deliveryZone?: { zone: string; name: string; estimateText: string };
   payment: {
-    method: 'cod';
+    method: "cod";
     status: PaymentStatus;
     amountCollected?: number;
     collectedAt?: string;
-    remittanceStatus?: 'pending' | 'remitted';
+    remittanceStatus?: "pending" | "remitted";
     remittedAt?: string;
     remittanceRef?: string;
   };
   status: OrderStatus;
-  statusHistory: { _id?: string; status: OrderStatus; at: string; by?: string; note?: string }[];
-  contactAttempts: { _id?: string; attemptNo: number; at: string; outcome: ContactOutcome; note?: string; by?: string }[];
+  statusHistory: {
+    _id?: string;
+    status: OrderStatus;
+    at: string;
+    by?: string;
+    note?: string;
+  }[];
+  contactAttempts: {
+    _id?: string;
+    attemptNo: number;
+    at: string;
+    outcome: ContactOutcome;
+    note?: string;
+    by?: string;
+  }[];
   cancellation?: {
-    requestStatus?: 'requested' | 'approved' | 'declined';
+    requestStatus?: "requested" | "approved" | "declined";
     requestedVia?: CancellationSource;
     requestedAt?: string;
     reason?: string;
@@ -151,7 +296,7 @@ export interface OrderDetail {
     failedAt?: string;
     failureReason?: string;
     returnedAt?: string;
-    returnDecision?: 'restock' | 'write_off';
+    returnDecision?: "restock" | "write_off";
   };
   flags: { stockShortfall: boolean; unlistedCity: boolean };
   adminNotes?: string;
