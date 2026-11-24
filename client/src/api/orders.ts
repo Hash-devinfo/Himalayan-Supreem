@@ -57,4 +57,107 @@ export interface OrderListResponse {
 
 export const ordersApi = {
   list: (query: OrderListQuery = {}) => api.get<OrderListResponse>(withQuery('/admin/orders', query)),
+  // Accepts the database ID or the order number
+  get: (idOrNumber: string) => api.get<OrderDetailResponse>(`/admin/orders/${encodeURIComponent(idOrNumber)}`),
 };
+
+export type ContactOutcome = 'no_answer' | 'busy' | 'switched_off' | 'wrong_number' | 'confirmed' | 'customer_cancelled';
+export type OrderChannel = 'website' | 'whatsapp' | 'phone' | 'other';
+export type PaymentStatus = 'pending' | 'collected' | 'refused' | 'uncollected' | 'refunded' | 'partially_refunded';
+export type Courier = 'tcs' | 'postex' | 'leopards';
+export type CancellationSource = 'status_page' | 'whatsapp' | 'admin';
+
+export interface OrderDetail {
+  _id: string;
+  orderNumber: string;
+  customer: string;
+  customerSnapshot: {
+    name: string;
+    phone: string;
+    email?: string;
+    address: {
+      line1: string;
+      line2?: string;
+      area?: string;
+      city: string;
+      cityUnlisted: boolean;
+      province: string;
+    };
+  };
+  items: {
+    _id?: string;
+    product: string;
+    variant: string;
+    name: string;
+    variantLabel: string;
+    sku: string;
+    unitPrice: number;
+    unitCost?: number;
+    qty: number;
+    discount: number;
+    lineTotal: number;
+    promotionName?: string;
+    batchAllocations: { batch: string; batchNumber: string; expiryDate: string; qty: number }[];
+  }[];
+  pricing: { subtotal: number; discountTotal: number; deliveryCharge: number; total: number };
+  deliveryZone?: { zone: string; name: string; estimateText: string };
+  payment: {
+    method: 'cod';
+    status: PaymentStatus;
+    amountCollected?: number;
+    collectedAt?: string;
+    remittanceStatus?: 'pending' | 'remitted';
+    remittedAt?: string;
+    remittanceRef?: string;
+  };
+  status: OrderStatus;
+  statusHistory: { _id?: string; status: OrderStatus; at: string; by?: string; note?: string }[];
+  contactAttempts: { _id?: string; attemptNo: number; at: string; outcome: ContactOutcome; note?: string; by?: string }[];
+  cancellation?: {
+    requestStatus?: 'requested' | 'approved' | 'declined';
+    requestedVia?: CancellationSource;
+    requestedAt?: string;
+    reason?: string;
+    confirmedOnCall?: boolean;
+    decidedAt?: string;
+  };
+  fulfillment?: {
+    courier?: Courier;
+    trackingNumber?: string;
+    dispatchedAt?: string;
+    deliveredAt?: string;
+    failedAt?: string;
+    failureReason?: string;
+    returnedAt?: string;
+    returnDecision?: 'restock' | 'write_off';
+  };
+  flags: { stockShortfall: boolean; unlistedCity: boolean };
+  adminNotes?: string;
+  source?: {
+    channel: OrderChannel;
+    referrer?: string;
+    utmSource?: string;
+    utmMedium?: string;
+    utmCampaign?: string;
+  };
+  promotion?: { code: string; name: string; discount: number };
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PhoneRisk {
+  level: RiskLevel;
+  orders: number;
+  delivered: number;
+  refused: number; // refused or not collected at the door
+  cancelled: number;
+  blockedReason: string | null;
+}
+
+export interface OrderDetailResponse {
+  success: true;
+  order: OrderDetail;
+  statusLabel: string;
+  risk: PhoneRisk;
+  contact: { phone: string; callLink: string; whatsappLink: string };
+}

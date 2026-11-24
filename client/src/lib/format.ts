@@ -47,3 +47,22 @@ export function timeAgo(isoDateTime: string): string {
     new Date(isoDateTime),
   );
 }
+
+// "24 Nov 2026, 12:40 am" in Pakistan time
+export function formatDateTime(iso: string): string {
+  return new Intl.DateTimeFormat('en-PK', {
+    timeZone: PKT,
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(new Date(iso));
+}
+
+// "24 Nov 2026"
+export function formatDate(iso: string): string {
+  return new Intl.DateTimeFormat('en-PK', { timeZone: PKT, day: 'numeric', month: 'short', year: 'numeric' }).format(
+    new Date(iso),
+  );
+}
