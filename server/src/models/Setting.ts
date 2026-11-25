@@ -8,7 +8,11 @@ import { DEFAULT_RISK_RULES } from "../constants/risk.js";
 
 // One document holds all store-wide settings. Its _id is always "store".
 export const SETTINGS_ID = "store";
-
+// PostEx booking settings (Phase 20): which registered PostEx address parcels are picked up from / returned to
+export interface PostexSettings {
+  pickupAddressCode?: string;
+  returnAddressCode?: string;
+}
 export interface StoreLogo {
   url: string; // for the website header (max 600 px wide)
   thumbUrl: string; // small copy (max 200 px wide), e.g. for emails and the admin
@@ -55,6 +59,7 @@ export interface ISetting {
   defaultPackagingCost?: number; // PKR, for profit reports
   inventory: InventorySettings;
   templates: MessageTemplates;
+    postex?: PostexSettings;
   risk: RiskSettings;
   createdAt: Date;
   updatedAt: Date;
@@ -186,6 +191,16 @@ const settingSchema = new Schema<ISetting>(
     inventory: { type: inventorySettingsSchema, default: () => ({}) },
     risk: { type: riskSettingsSchema, default: () => ({}) },
     templates: { type: templatesSchema, default: () => ({}) },
+        postex: {
+      type: new Schema<PostexSettings>(
+        {
+          pickupAddressCode: { type: String, trim: true, maxlength: 40 },
+          returnAddressCode: { type: String, trim: true, maxlength: 40 },
+        },
+        { _id: false },
+      ),
+      default: () => ({}),
+    },
   },
   {
     timestamps: true,

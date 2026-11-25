@@ -32,7 +32,7 @@ import { analyticsPublicRoutes } from './modules/analytics/analytics.routes.js';
 import { visitorCookie } from './modules/analytics/visitor.js';
 import { reviewAdminRoutes, reviewPublicRoutes } from './modules/reviews/review.routes.js';
 import { promotionAdminRoutes } from './modules/promotions/promotion.routes.js';
-
+import { postexAdminRoutes } from './modules/integrations/postex/postex.routes.js';
 
 
 
@@ -99,7 +99,7 @@ app.use('/api/analytics', analyticsPublicRoutes);
 app.use('/api/reviews', reviewPublicRoutes);
 app.use('/api/admin/reviews', reviewAdminRoutes);
 app.use('/api/admin/promotions', promotionAdminRoutes);
-
+app.use('/api/admin/integrations/postex', postexAdminRoutes);
 // 4. Error handling (must be last)
 app.use(notFound);
 app.use(errorHandler);

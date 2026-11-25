@@ -7,11 +7,19 @@ export interface ICity {
   zone?: Types.ObjectId;
   isBlocked: boolean;
   source: CitySource;
-  sortOrder: number;
+    sortOrder: number;
+  postex?: CityPostex;
   createdAt: Date;
+ 
   updatedAt: Date;
 }
-
+// How PostEx knows this city (their exact spelling is needed to book a parcel)
+export interface CityPostex {
+  name?: string; // PostEx's city name; empty = PostEx does not deliver here
+  delivers: boolean;
+  manual: boolean; // true = the admin chose the match by hand (a sync never changes it)
+  checkedAt: Date;
+}
 export type CityDocument = HydratedDocument<ICity>;
 
 // "Lahore" and "lahore" count as the same city
@@ -37,6 +45,17 @@ const citySchema = new Schema<ICity>(
     source: { type: String, enum: CITY_SOURCES, default: 'admin' },
     // Lower numbers are listed first (major cities)
     sortOrder: { type: Number, default: 100 },
+        postex: {
+      type: new Schema<CityPostex>(
+        {
+          name: { type: String, trim: true, maxlength: 80 },
+          delivers: { type: Boolean, default: false },
+          manual: { type: Boolean, default: false },
+          checkedAt: { type: Date, required: true },
+        },
+        { _id: false }
+      ),
+    },
   },
   {
     timestamps: true,
