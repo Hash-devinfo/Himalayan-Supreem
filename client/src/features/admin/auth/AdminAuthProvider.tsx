@@ -61,7 +61,7 @@ export default function AdminAuthProvider({ children }: { children: ReactNode })
     try {
       await authApi.logout();
     } finally {
-      queryClient.clear(); // no admin data left in memory after logging out
+      queryClient.clear(); 
       setAdmin(null);
       setStatus('guest');
     }
