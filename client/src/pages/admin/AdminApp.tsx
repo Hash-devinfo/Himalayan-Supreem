@@ -26,7 +26,8 @@ import ReviewsPage from "./reviews/ReviewsPage";
 import SettingsPage from "./settings/SettingsPage";
 import PromotionFormPage from "./promotions/PromotionFormPage";
 import PromotionsListPage from "./promotions/PromotionsListPage";
-
+import PolicyPageEditPage from "./policies/PolicyPageEditPage";
+import PolicyPagesPage from "./policies/PolicyPagesPage";
 
 // Sections that have their real pages; the rest still show "being built"
 const BUILT_SECTIONS = new Set([
@@ -86,7 +87,9 @@ export default function AdminApp() {
             <Route path="delivery" element={<DeliveryPage />} />
             {/* Settings */}
             <Route path="settings" element={<SettingsPage />} />
-
+            {/* Policy pages */}
+            <Route path="pages" element={<PolicyPagesPage />} />
+            <Route path="pages/:slug" element={<PolicyPageEditPage />} />
             {/* Sections not built yet. Each one is swapped for its real page as we build it. */}
             {ADMIN_NAV_ITEMS.filter((item) => item.path && !BUILT_SECTIONS.has(item.path)).map((item) => (
               <Route key={item.path} path={`${item.path}/*`} element={<ComingSoonPage />} />
