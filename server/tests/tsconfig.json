@@ -1,0 +1,9 @@
+{
+  // Only for VS Code and type checks of the tests (the build still uses ../tsconfig.json)
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "..",
+    "noEmit": true
+  },
+  "include": ["**/*.ts", "../src/**/*.ts", "../vitest.config.ts"]
+}
