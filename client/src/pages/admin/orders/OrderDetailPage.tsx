@@ -1,120 +1,89 @@
-import { Link, useLocation, useNavigate, useParams } from "react-router";
-import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, FileText, Printer, SearchX } from "lucide-react";
-import { ApiError } from "../../../api/client";
-import { ordersApi, type OrderDetailResponse } from "../../../api/orders";
-import Badge from "../../../components/ui/Badge";
-import FormAlert from "../../../components/ui/FormAlert";
-import Skeleton from "../../../components/ui/Skeleton";
-import {
-  Panel,
-  PanelError,
-} from "../../../features/admin/dashboard/DashboardPanel";
-import CustomerCard from "../../../features/admin/orders/detail/CustomerCard";
-import DeliveryCard from "../../../features/admin/orders/detail/DeliveryCard";
-import {
-  InfoList,
-  InfoRow,
-} from "../../../features/admin/orders/detail/InfoList";
-import OrderItemsCard from "../../../features/admin/orders/detail/OrderItemsCard";
-import OrderTimeline from "../../../features/admin/orders/detail/OrderTimeline";
-import {
-  CANCELLATION_SOURCE_LABELS,
-  CHANNEL_LABELS,
-} from "../../../features/admin/orders/orderLabels";
-import {
-  INVOICE_STATUSES,
-  PACKED_OR_LATER,
-  orderStatusTone,
-} from "../../../features/admin/orders/orderStatus";
-import { ORDERS_KEY } from "../../../features/admin/orders/queries";
-import { formatDateTime, formatRs, timeAgo } from "../../../lib/format";
-import OrderRefundsCard from "../../../features/admin/refunds/OrderRefundsCard";
+import { Link, useLocation, useNavigate, useParams } from 'react-router';
+import { useQuery } from '@tanstack/react-query';
+import { ArrowLeft, FileText, Printer, SearchX } from 'lucide-react';
+import { ApiError } from '../../../api/client';
+import { ordersApi, type OrderDetailResponse } from '../../../api/orders';
+import Badge from '../../../components/ui/Badge';
+import FormAlert from '../../../components/ui/FormAlert';
+import Skeleton from '../../../components/ui/Skeleton';
+import { Panel, PanelError } from '../../../features/admin/dashboard/DashboardPanel';
+import OrderActions from '../../../features/admin/orders/actions/OrderActions';
+import CustomerCard from '../../../features/admin/orders/detail/CustomerCard';
+import DeliveryCard from '../../../features/admin/orders/detail/DeliveryCard';
+import { InfoList, InfoRow } from '../../../features/admin/orders/detail/InfoList';
+import NotesCard from '../../../features/admin/orders/detail/NotesCard';
+import OrderItemsCard from '../../../features/admin/orders/detail/OrderItemsCard';
+import OrderTimeline from '../../../features/admin/orders/detail/OrderTimeline';
+import { CHANNEL_LABELS } from '../../../features/admin/orders/orderLabels';
+import { INVOICE_STATUSES, PACKED_OR_LATER, orderStatusTone } from '../../../features/admin/orders/orderStatus';
+import { ORDERS_KEY } from '../../../features/admin/orders/queries';
+import OrderRefundsCard from '../../../features/admin/refunds/OrderRefundsCard';
+import { formatDateTime, formatRs, timeAgo } from '../../../lib/format';
 
 function BackLink() {
   const navigate = useNavigate();
   const location = useLocation();
   // Go back to the list with its filters if we came from it; otherwise open the plain list
-  const cameFromApp = location.key !== "default";
+  const cameFromApp = location.key !== 'default';
 
   return (
     <button
       type="button"
-      onClick={() => (cameFromApp ? navigate(-1) : navigate("/admin/orders"))}
-      className="inline-flex items-center gap-1 text-sm text-muted transition-colors hover:text-ink">
+      onClick={() => (cameFromApp ? navigate(-1) : navigate('/admin/orders'))}
+      className="inline-flex items-center gap-1 text-sm text-muted transition-colors hover:text-ink"
+    >
       <ArrowLeft className="h-4 w-4" aria-hidden="true" />
       All orders
     </button>
   );
 }
 
+// Risk and stock warnings. The customer's cancellation request is shown by OrderActions, with its buttons.
 function OrderAlerts({ data }: { data: OrderDetailResponse }) {
   const { order, risk } = data;
-  const request =
-    order.cancellation?.requestStatus === "requested"
-      ? order.cancellation
-      : undefined;
+  const any = risk.level !== 'normal' || order.flags.stockShortfall || order.flags.unlistedCity;
+  if (!any) return null;
 
   return (
     <div className="space-y-2">
-      {risk.level === "blocked" && (
+      {risk.level === 'blocked' && (
         <FormAlert tone="danger" className="">
-          This phone number is blocked
-          {risk.blockedReason ? `: ${risk.blockedReason}` : "."}
+          This phone number is blocked{risk.blockedReason ? `: ${risk.blockedReason}` : '.'}
         </FormAlert>
       )}
-      {risk.level === "high" && (
+      {risk.level === 'high' && (
         <FormAlert tone="danger" className="">
-          High risk: this number refused or didn't collect {risk.refused}{" "}
-          {risk.refused === 1 ? "parcel" : "parcels"} before. Confirm carefully
-          on the call.
-        </FormAlert>
-      )}
-      {request && (
-        <FormAlert tone="danger" className="">
-          The customer asked to cancel
-          {request.requestedVia
-            ? ` through ${CANCELLATION_SOURCE_LABELS[request.requestedVia]}`
-            : ""}
-          {request.requestedAt ? `, ${timeAgo(request.requestedAt)}` : ""}.
-          {request.reason ? ` Reason: ${request.reason}` : ""}
+          High risk: this number refused or didn't collect {risk.refused} {risk.refused === 1 ? 'parcel' : 'parcels'} before.
+          Confirm carefully on the call.
         </FormAlert>
       )}
       {order.flags.stockShortfall && (
         <FormAlert tone="warning" className="">
-          There isn't enough sellable stock for this order right now. Restock,
-          or talk to the customer, before packing.
+          There isn't enough sellable stock for this order right now. Restock, or talk to the customer, before packing.
         </FormAlert>
       )}
       {order.flags.unlistedCity && (
         <FormAlert tone="warning" className="">
-          The customer typed the city "{order.customerSnapshot.address.city}",
-          which isn't in your delivery list. Check that your courier delivers
-          there.
+          The customer typed the city "{order.customerSnapshot.address.city}", which isn't in your delivery list. Check that
+          your courier delivers there.
         </FormAlert>
       )}
     </div>
   );
 }
 
+// Your notes are in NotesCard (where you can edit them), so they are not repeated here
 function OrderInfoCard({ data }: { data: OrderDetailResponse }) {
-  const { order } = data;
-  const source = order.source;
+  const source = data.order.source;
 
   return (
     <Panel title="Order info">
       <InfoList>
-        <InfoRow label="Channel">
-          {CHANNEL_LABELS[source?.channel ?? "website"]}
-        </InfoRow>
-        <InfoRow label="Placed">{formatDateTime(order.createdAt)}</InfoRow>
-        <InfoRow label="Last change">{timeAgo(order.updatedAt)}</InfoRow>
+        <InfoRow label="Channel">{CHANNEL_LABELS[source?.channel ?? 'website']}</InfoRow>
+        <InfoRow label="Placed">{formatDateTime(data.order.createdAt)}</InfoRow>
+        <InfoRow label="Last change">{timeAgo(data.order.updatedAt)}</InfoRow>
         {source?.utmSource && (
-          <InfoRow label="Campaign">
-            {[source.utmSource, source.utmMedium, source.utmCampaign]
-              .filter(Boolean)
-              .join(" · ")}
-          </InfoRow>
+          <InfoRow label="Campaign">{[source.utmSource, source.utmMedium, source.utmCampaign].filter(Boolean).join(' · ')}</InfoRow>
         )}
         {source?.referrer && (
           <InfoRow label="Came from">
@@ -122,46 +91,26 @@ function OrderInfoCard({ data }: { data: OrderDetailResponse }) {
           </InfoRow>
         )}
       </InfoList>
-      {order.adminNotes && (
-        <div className="border-t border-line px-4 py-3">
-          <p className="text-xs font-medium text-muted">Your notes</p>
-          <p className="mt-1 whitespace-pre-line text-sm">{order.adminNotes}</p>
-        </div>
-      )}
     </Panel>
   );
 }
-function DocumentLinks({
-  status,
-  orderNumber,
-}: {
-  status: OrderDetailResponse["order"]["status"];
-  orderNumber: string;
-}) {
+
+function DocumentLinks({ status, orderNumber }: { status: OrderDetailResponse['order']['status']; orderNumber: string }) {
   const invoice = INVOICE_STATUSES.includes(status);
   const slip = PACKED_OR_LATER.includes(status);
   if (!invoice && !slip) return null;
-  const linkClass =
-    "inline-flex items-center gap-1 text-xs text-sage underline-offset-4 hover:underline";
+  const linkClass = 'inline-flex items-center gap-1 text-xs text-sage underline-offset-4 hover:underline';
 
   return (
-    <div className="mt-2 flex justify-end gap-4">
+    <div className="mt-2 flex gap-4 sm:justify-end">
       {slip && (
-        <Link
-          to={`/admin/orders/${orderNumber}/packing-slip`}
-          target="_blank"
-          rel="noopener"
-          className={linkClass}>
+        <Link to={`/admin/orders/${orderNumber}/packing-slip`} target="_blank" rel="noopener" className={linkClass}>
           <Printer className="h-3.5 w-3.5" aria-hidden="true" />
           Packing slip
         </Link>
       )}
       {invoice && (
-        <Link
-          to={`/admin/orders/${orderNumber}/invoice`}
-          target="_blank"
-          rel="noopener"
-          className={linkClass}>
+        <Link to={`/admin/orders/${orderNumber}/invoice`} target="_blank" rel="noopener" className={linkClass}>
           <FileText className="h-3.5 w-3.5" aria-hidden="true" />
           Invoice
         </Link>
@@ -169,6 +118,7 @@ function DocumentLinks({
     </div>
   );
 }
+
 function DetailSkeleton() {
   return (
     <div className="space-y-6">
@@ -188,10 +138,10 @@ function DetailSkeleton() {
 }
 
 export default function OrderDetailPage() {
-  const { orderNumber = "" } = useParams();
+  const { orderNumber = '' } = useParams();
 
   const query = useQuery({
-    queryKey: [...ORDERS_KEY, "detail", orderNumber],
+    queryKey: [...ORDERS_KEY, 'detail', orderNumber],
     queryFn: () => ordersApi.get(orderNumber),
     refetchInterval: 60_000,
   });
@@ -206,8 +156,7 @@ export default function OrderDetailPage() {
   }
 
   if (query.isError) {
-    const notFound =
-      query.error instanceof ApiError && query.error.status === 404;
+    const notFound = query.error instanceof ApiError && query.error.status === 404;
     return (
       <div className="mx-auto max-w-6xl space-y-4">
         <BackLink />
@@ -217,19 +166,14 @@ export default function OrderDetailPage() {
               <SearchX className="h-6 w-6" aria-hidden="true" />
             </span>
             <h1 className="mt-4 text-xl font-medium">Order not found</h1>
-            <p className="mt-2 text-sm text-muted">
-              There's no order "{orderNumber}". Check the number and try again.
-            </p>
+            <p className="mt-2 text-sm text-muted">There's no order "{orderNumber}". Check the number and try again.</p>
             <Link to="/admin/orders" className="btn-primary mt-6">
               Go to orders
             </Link>
           </section>
         ) : (
           <div className="card">
-            <PanelError
-              error={query.error}
-              onRetry={() => void query.refetch()}
-            />
+            <PanelError error={query.error} onRetry={() => void query.refetch()} />
           </div>
         )}
       </div>
@@ -247,39 +191,38 @@ export default function OrderDetailPage() {
           <div>
             <h1 className="flex flex-wrap items-center gap-3 text-2xl font-medium">
               {order.orderNumber}
-              <Badge tone={orderStatusTone(order.status)}>
-                {data.statusLabel}
-              </Badge>
+              <Badge tone={orderStatusTone(order.status)}>{data.statusLabel}</Badge>
             </h1>
             <p className="mt-1 text-sm text-muted">
-              Placed {formatDateTime(order.createdAt)} ·{" "}
-              {CHANNEL_LABELS[order.source?.channel ?? "website"]}
+              Placed {formatDateTime(order.createdAt)} · {CHANNEL_LABELS[order.source?.channel ?? 'website']}
             </p>
           </div>
-          <div className="text-right">
+          <div className="sm:text-right">
             <p className="text-xs text-muted">Total (cash on delivery)</p>
-            <p className="text-2xl font-medium tabular-nums">
-              {formatRs(order.pricing.total)}
-            </p>
-            <DocumentLinks
-              status={order.status}
-              orderNumber={order.orderNumber}
-            />
+            <p className="text-2xl font-medium tabular-nums">{formatRs(order.pricing.total)}</p>
+            <DocumentLinks status={order.status} orderNumber={order.orderNumber} />
           </div>
         </header>
       </div>
 
       <OrderAlerts data={data} />
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="space-y-6 lg:col-span-2">
+      {/* The next step for this order, with its buttons (call, pack, ship, deliver…) */}
+      <OrderActions order={order} />
+
+      {/* Phone: customer (with Call) first. Wide screens: items on the left, customer on the right. */}
+      <div className="grid gap-6 lg:grid-cols-3 lg:items-start">
+        <div className="space-y-6 lg:col-span-2 lg:row-span-2">
           <OrderItemsCard order={order} />
           <OrderTimeline order={order} />
         </div>
-        <div className="space-y-6">
+        <div className="order-first lg:order-none">
           <CustomerCard data={data} />
+        </div>
+        <div className="space-y-6">
           <DeliveryCard order={order} />
           <OrderRefundsCard order={order} />
+          <NotesCard order={order} />
           <OrderInfoCard data={data} />
         </div>
       </div>

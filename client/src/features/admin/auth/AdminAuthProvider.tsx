@@ -30,17 +30,25 @@ export default function AdminAuthProvider({ children }: { children: ReactNode })
     };
   }, []);
 
-  // If any admin data request answers "not logged in" (session expired, or password changed elsewhere),
-  // show the login screen. RequireAdmin remembers the page, so login brings the admin back to it.
   useEffect(() => {
-    return queryClient.getQueryCache().subscribe((event) => {
-      if (event.type !== 'updated' || event.action.type !== 'error') return;
-      const { error } = event.action;
+    const signOutOn401 = (error: unknown) => {
       if (error instanceof ApiError && error.status === 401) {
         setAdmin(null);
         setStatus('guest');
       }
+    };
+    // Data loads (lists, screens)
+    const stopQueries = queryClient.getQueryCache().subscribe((event) => {
+      if (event.type === 'updated' && event.action.type === 'error') signOutOn401(event.action.error);
     });
+    // Button actions (pack, ship, save…)
+    const stopMutations = queryClient.getMutationCache().subscribe((event) => {
+      if (event.type === 'updated' && event.action.type === 'error') signOutOn401(event.action.error);
+    });
+    return () => {
+      stopQueries();
+      stopMutations();
+    };
   }, [queryClient]);
 
   const login = useCallback(async (email: string, password: string) => {
