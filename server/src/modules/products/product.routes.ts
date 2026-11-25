@@ -5,6 +5,10 @@ import * as productController from './product.controller.js';
 import * as variantController from './variant.controller.js';
 import * as publicController from './product.public.controller.js';
 import { batchRoutes } from '../inventory/inventory.routes.js';
+import { imageUpload } from '../../middleware/imageUpload.js';
+import * as productImageController from './productImage.controller.js';
+import { MAX_PRODUCT_IMAGE_MB } from './productImage.service.js';
+import { removeImageSchema, reorderImagesSchema, updateImageSchema } from '../media/image.validation.js';
 import {
   changeProductStatusSchema,
   createProductSchema,
@@ -38,7 +42,11 @@ productAdminRoutes.patch(
   validateBody(changeProductStatusSchema),
   productController.changeStatus
 );
-
+// Photos of one product (the first is the main photo)
+productAdminRoutes.post('/:id/images', imageUpload(MAX_PRODUCT_IMAGE_MB), productImageController.add);
+productAdminRoutes.patch('/:id/images', validateBody(updateImageSchema), productImageController.update);
+productAdminRoutes.put('/:id/images/order', validateBody(reorderImagesSchema), productImageController.reorder);
+productAdminRoutes.delete('/:id/images', validateBody(removeImageSchema), productImageController.remove);
 // Sizes (variants) of one product
 productAdminRoutes.get('/:productId/variants', variantController.list);
 productAdminRoutes.post(

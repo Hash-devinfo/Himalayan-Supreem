@@ -18,8 +18,7 @@ import {
   productPublicRoutes,
 } from "./modules/products/product.routes.js";
 import { inventoryAdminRoutes } from "./modules/inventory/inventory.routes.js";
-import { settingsAdminRoutes } from './modules/settings/settings.routes.js';
-import { deliveryAdminRoutes, deliveryPublicRoutes } from './modules/delivery/delivery.routes.js';
+import { settingsAdminRoutes, storePublicRoutes } from './modules/settings/settings.routes.js';import { deliveryAdminRoutes, deliveryPublicRoutes } from './modules/delivery/delivery.routes.js';
 import { cartRoutes } from './modules/cart/cart.routes.js';
 import { checkoutRoutes } from './modules/checkout/checkout.routes.js';
 import { orderAdminRoutes } from './modules/orders/order.routes.js';
@@ -83,6 +82,7 @@ app.use("/api/products", productPublicRoutes);
 app.use("/api/admin/products", productAdminRoutes);
 app.use("/api/admin/inventory", inventoryAdminRoutes);
 app.use('/api/admin/settings', settingsAdminRoutes);
+app.use('/api/store', storePublicRoutes);
 app.use('/api/delivery', deliveryPublicRoutes);
 app.use('/api/admin/delivery', deliveryAdminRoutes);
 app.use('/api/cart', cartRoutes);

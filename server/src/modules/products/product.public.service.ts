@@ -47,7 +47,7 @@ export interface PublicProductDetail extends Omit<
   "image" | "sale"
 > {
   description?: string;
-  images: { url: string; alt: string }[];
+    images: { url: string; thumbUrl: string; alt: string; width?: number; height?: number }[];
   ingredients?: string;
   allergens?: string;
   storageInstructions?: string;
@@ -208,7 +208,7 @@ export async function listPublicProducts(
       slug: doc.slug,
       shortDescription: doc.shortDescription,
       image: firstImage
-        ? { url: firstImage.url, alt: firstImage.alt }
+        ? { url: firstImage.thumbUrl ?? firstImage.url, alt: firstImage.alt }
         : undefined,
       category: categoryInfo(doc.category as PopulatedCategory),
       minPrice: doc.minPrice,
@@ -302,7 +302,13 @@ export async function getPublicProductBySlug(
     category: categoryInfo(product.category as PopulatedCategory),
     shortDescription: product.shortDescription,
     description: product.description,
-    images: product.images.map((image) => ({ url: image.url, alt: image.alt })),
+    images: product.images.map((image) => ({
+      url: image.url,
+      thumbUrl: image.thumbUrl ?? image.url,
+      alt: image.alt,
+      width: image.width,
+      height: image.height,
+    })),
     ingredients: product.ingredients,
     allergens: product.allergens,
     storageInstructions: product.storageInstructions,

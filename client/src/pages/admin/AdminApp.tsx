@@ -29,7 +29,7 @@ import PromotionsListPage from "./promotions/PromotionsListPage";
 import PolicyPageEditPage from "./policies/PolicyPageEditPage";
 import PolicyPagesPage from "./policies/PolicyPagesPage";
 import NotificationsPage from "./notifications/NotificationsPage";
-
+import ReportsPage from "./reports/ReportsPage";
 
 // Sections that have their real pages; the rest still show "being built"
 const BUILT_SECTIONS = new Set([
@@ -87,6 +87,9 @@ export default function AdminApp() {
             <Route path="inventory/:productId/:variantId" element={<SizeStockPage />} />
             {/* Delivery */}
             <Route path="delivery" element={<DeliveryPage />} />
+                        {/* Reports */}
+            <Route path="reports" element={<ReportsPage />} />
+            <Route path="reports/:report" element={<ReportsPage />} />
             {/* Settings */}
             <Route path="settings" element={<SettingsPage />} />
             {/* Policy pages */}

@@ -9,8 +9,17 @@ import { DEFAULT_RISK_RULES } from "../constants/risk.js";
 // One document holds all store-wide settings. Its _id is always "store".
 export const SETTINGS_ID = "store";
 
+export interface StoreLogo {
+  url: string; // for the website header (max 600 px wide)
+  thumbUrl: string; // small copy (max 200 px wide), e.g. for emails and the admin
+  publicId: string;
+  width?: number;
+  height?: number;
+}
+
 export interface StoreInfo {
   name: string;
+  logo?: StoreLogo;
   email?: string;
   whatsappNumber?: string; // stored as +923XXXXXXXXX
   supportHours?: string;
@@ -78,6 +87,18 @@ const storeInfoSchema = new Schema<StoreInfo>(
       ],
     },
     supportHours: { type: String, trim: true, maxlength: 120 },
+        logo: {
+      type: new Schema<StoreLogo>(
+        {
+          url: { type: String, required: true },
+          thumbUrl: { type: String, required: true },
+          publicId: { type: String, required: true },
+          width: { type: Number },
+          height: { type: Number },
+        },
+        { _id: false },
+      ),
+    },
   },
   { _id: false },
 );

@@ -2,11 +2,13 @@ import { Schema, model, type HydratedDocument, type Types } from 'mongoose';
 import { PRODUCT_STATUSES, type ProductStatus } from '../constants/enums.js';
 
 export interface ProductImage {
-  url: string;
-  publicId: string;
+  url: string; // large copy for the product page
+  thumbUrl?: string; // small copy for product cards and the cart
+  publicId: string; // the photo's name in Cloudinary
   alt: string;
+  width?: number;
+  height?: number;
 }
-
 export interface ProductSeo {
   title?: string;
   description?: string;
@@ -44,9 +46,12 @@ export type ProductDocument = HydratedDocument<IProduct>;
 
 const productImageSchema = new Schema<ProductImage>(
   {
-    url: { type: String, required: true },
+        url: { type: String, required: true },
+    thumbUrl: { type: String },
     publicId: { type: String, required: true },
     alt: { type: String, required: [true, 'Image alt text is required'], trim: true, maxlength: 150 },
+    width: { type: Number },
+    height: { type: Number },
   },
   { _id: false }
 );

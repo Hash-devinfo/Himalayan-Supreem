@@ -36,6 +36,16 @@ function smtpSettings() {
     from,
   };
 }
+// Photo storage (Cloudinary). Optional until the business has an account. All three must be set.
+function cloudinarySettings() {
+  const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+  const apiKey = process.env.CLOUDINARY_API_KEY;
+  const apiSecret = process.env.CLOUDINARY_API_SECRET;
+  if (!cloudName || !apiKey || !apiSecret) return null;
+  // Folder inside the Cloudinary account, so test and live photos can be kept apart
+  const folder = process.env.CLOUDINARY_FOLDER?.trim() || 'himalayan-supreme';
+  return { cloudName, apiKey, apiSecret, folder };
+}
 
 const env = {
   nodeEnv: process.env.NODE_ENV ?? 'development',
@@ -46,6 +56,7 @@ const env = {
   jwtSecret,
   jwtExpiresIn: process.env.JWT_EXPIRES_IN ?? '1d',
     smtp: smtpSettings(),
+  cloudinary: cloudinarySettings(),
 } as const;
 
 export default env;
