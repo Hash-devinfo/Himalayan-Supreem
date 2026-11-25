@@ -62,7 +62,7 @@ export interface OrderItem {
   qty: number;
   discount: number;
   lineTotal: number;
-    promotion?: Types.ObjectId; // the promotion that gave this item its discount
+  promotion?: Types.ObjectId; // the promotion that gave this item its discount
   promotionName?: string;
   batchAllocations: BatchAllocation[]; // filled at packing
 }
@@ -124,6 +124,27 @@ export interface OrderCancellation {
   decidedAt?: Date;
   decidedBy?: Types.ObjectId;
 }
+// A parcel booked through a courier's API (Phase 20B: PostEx). The order's own trackingNumber
+// is only set when the order is shipped; until then the booked number lives here.
+export const BOOKING_STATUSES = [
+  "booking",
+  "booked",
+  "failed",
+  "unknown",
+  "cancelled",
+] as const;
+export type BookingStatus = (typeof BOOKING_STATUSES)[number];
+
+export interface OrderBooking {
+  provider: "postex";
+  status: BookingStatus; // unknown = PostEx did not answer, so we don't know if the parcel was created
+  trackingNumber?: string;
+  weightKg?: number;
+  attemptAt: Date;
+  bookedAt?: Date;
+  cancelledAt?: Date;
+  error?: string;
+}
 
 export interface OrderFulfillment {
   courier?: Courier;
@@ -132,6 +153,7 @@ export interface OrderFulfillment {
   deliveredAt?: Date;
   failedAt?: Date;
   failureReason?: string;
+  booking?: OrderBooking;
   returnedAt?: Date;
   returnDecision?: ReturnDecision;
   courierFee?: number;
@@ -171,7 +193,7 @@ export interface IOrder {
   adminNotes?: string;
   source: OrderSource;
   reviewLinkUsedAt?: Date;
-    promotion?: OrderPromotion;
+  promotion?: OrderPromotion;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -231,7 +253,7 @@ const orderItemSchema = new Schema<OrderItem>(
     qty: { type: Number, required: true, min: 1, validate: wholeNumber },
     discount: { ...rupees, default: 0 },
     lineTotal: { ...rupees, required: true },
-        promotion: { type: Schema.Types.ObjectId, ref: 'Promotion' },
+    promotion: { type: Schema.Types.ObjectId, ref: "Promotion" },
     promotionName: { type: String },
     batchAllocations: { type: [batchAllocationSchema], default: [] },
   },
@@ -315,6 +337,19 @@ const cancellationSchema = new Schema<OrderCancellation>(
   },
   { _id: false },
 );
+const bookingSchema = new Schema<OrderBooking>(
+  {
+    provider: { type: String, enum: ["postex"], required: true },
+    status: { type: String, enum: BOOKING_STATUSES, required: true },
+    trackingNumber: { type: String, trim: true, maxlength: 60 },
+    weightKg: { type: Number, min: 0 },
+    attemptAt: { type: Date, required: true },
+    bookedAt: { type: Date },
+    cancelledAt: { type: Date },
+    error: { type: String, maxlength: 500 },
+  },
+  { _id: false },
+);
 
 const fulfillmentSchema = new Schema<OrderFulfillment>(
   {
@@ -327,6 +362,7 @@ const fulfillmentSchema = new Schema<OrderFulfillment>(
     returnedAt: { type: Date },
     returnDecision: { type: String, enum: RETURN_DECISIONS },
     courierFee: rupees,
+    booking: { type: bookingSchema },
     codCharge: rupees,
     packagingCost: rupees,
   },
@@ -378,15 +414,19 @@ const orderSchema = new Schema<IOrder>(
     adminNotes: { type: String, trim: true, maxlength: 2000 },
     source: { type: sourceSchema, default: () => ({}) },
     reviewLinkUsedAt: { type: Date },
-        promotion: {
+    promotion: {
       type: new Schema<OrderPromotion>(
         {
-          promotion: { type: Schema.Types.ObjectId, ref: 'Promotion', required: true },
+          promotion: {
+            type: Schema.Types.ObjectId,
+            ref: "Promotion",
+            required: true,
+          },
           code: { type: String, required: true },
           name: { type: String, required: true },
           discount: { ...rupees, required: true },
         },
-        { _id: false }
+        { _id: false },
       ),
     },
   },
@@ -400,6 +440,7 @@ orderSchema.index({ customer: 1, createdAt: -1 });
 orderSchema.index({ status: 1, createdAt: -1 });
 orderSchema.index({ "customerSnapshot.phone": 1 });
 orderSchema.index({ "fulfillment.trackingNumber": 1 }, { sparse: true });
+orderSchema.index({ 'fulfillment.booking.trackingNumber': 1 }, { sparse: true });
 
 const Order = model<IOrder>("Order", orderSchema);
 

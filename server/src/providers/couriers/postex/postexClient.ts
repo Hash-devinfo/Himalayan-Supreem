@@ -21,6 +21,7 @@ export interface PostexCall {
   order?: { id: Types.ObjectId; orderNumber: string };
   summary?: string; // what was asked, in a few words (no personal data)
   expect?: 'json' | 'pdf';
+   acceptHttpOk?: boolean;
 }
 
 export interface PostexResult<T> {
@@ -92,15 +93,15 @@ async function once<T>(call: PostexCall, attempt: number): Promise<PostexResult<
     } catch {
       parsed = undefined;
     }
-    const ok = response.ok && parsed && String(parsed.statusCode) === '200';
+        const ok = response.ok && (call.acceptHttpOk || (parsed && String(parsed.statusCode) === '200'));
     if (!ok) {
       const reason = parsed?.statusMessage ?? (text ? short(text, 150) : `HTTP ${response.status}`);
       await log(call, { status: 'failed', httpStatus, error: reason, attempt, durationMs: Date.now() - started });
       const auth = response.status === 401 || response.status === 403;
       throw new AppError(auth ? 'PostEx refused the token. Check POSTEX_TOKEN and POSTEX_ENV in .env.' : `PostEx said: ${reason}`, auth ? 502 : response.status >= 500 ? 502 : 400);
     }
-    await log(call, { status: 'success', httpStatus, response: `${parsed!.statusCode} ${parsed!.statusMessage ?? ''}`, attempt, durationMs: Date.now() - started });
-    return parsed as PostexResult<T>;
+        await log(call, { status: 'success', httpStatus, response: parsed ? `${parsed.statusCode} ${parsed.statusMessage ?? ''}` : `HTTP ${httpStatus}`, attempt, durationMs: Date.now() - started });
+    return (parsed ?? { statusCode: String(httpStatus), statusMessage: '', dist: undefined }) as PostexResult<T>;
   } catch (error) {
     if (error instanceof AppError) throw error;
     const reason = (error as Error).name === 'TimeoutError' ? `no answer within ${TIMEOUT_MS / 1000} seconds` : (error as Error).message;

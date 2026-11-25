@@ -19,7 +19,7 @@ export async function setLogo(file: Express.Multer.File | undefined, actor: Acto
   await Setting.updateOne({ _id: SETTINGS_ID }, { $set: { 'store.logo': logo } });
   if (old) await deleteImage(old); // the old logo is no longer used
 
-  await recordAudit({ admin: actor.adminId, action: 'settings.logo_set', entityType: 'Setting', entityId: SETTINGS_ID, before: { publicId: old }, after: { publicId: stored.publicId, width: stored.width, height: stored.height }, ip: actor.ip });
+  await recordAudit({ admin: actor.adminId, action: 'settings.logo_set', entityType: 'Setting', before: { publicId: old }, after: { publicId: stored.publicId, width: stored.width, height: stored.height }, ip: actor.ip });
   return { logo };
 }
 
@@ -30,7 +30,7 @@ export async function removeLogo(actor: ActorContext) {
 
   await Setting.updateOne({ _id: SETTINGS_ID }, { $unset: { 'store.logo': '' } });
   await deleteImage(old);
-  await recordAudit({ admin: actor.adminId, action: 'settings.logo_remove', entityType: 'Setting', entityId: SETTINGS_ID, before: { publicId: old }, ip: actor.ip });
+  await recordAudit({ admin: actor.adminId, action: 'settings.logo_remove', entityType: 'Setting', before: { publicId: old }, ip: actor.ip });
   return { logo: null };
 }
 

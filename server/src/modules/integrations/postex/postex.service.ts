@@ -115,7 +115,7 @@ export async function updatePostexSettings(input: PostexSettingsInput, actor: Ac
   await Setting.updateOne({ _id: SETTINGS_ID }, { ...(Object.keys(set).length ? { $set: set } : {}), ...(Object.keys(unset).length ? { $unset: unset } : {}) });
 
   const after = (await getSettings()).postex;
-  await recordAudit({ admin: actor.adminId, action: 'postex.settings_update', entityType: 'Setting', entityId: SETTINGS_ID, before, after: { pickupAddressCode: after?.pickupAddressCode, returnAddressCode: after?.returnAddressCode }, ip: actor.ip });
+  await recordAudit({ admin: actor.adminId, action: 'postex.settings_update', entityType: 'Setting', before, after: { pickupAddressCode: after?.pickupAddressCode, returnAddressCode: after?.returnAddressCode }, ip: actor.ip });
   return { pickupAddressCode: after?.pickupAddressCode ?? null, returnAddressCode: after?.returnAddressCode ?? null };
 }
 

@@ -22,12 +22,21 @@ export async function shipOrder(idOrNumber: string, input: ShipOrderInput, actor
     const before = order.status;
     const reattempt = before === 'delivery_failed';
     firstDispatch = !reattempt;
-        if (!reattempt && !input.courier) throw new AppError('Choose the courier', 400);
+     if (!reattempt && !input.courier) throw new AppError('Choose the courier', 400);
+        const booking = order.fulfillment.booking;
+    const bookingActive = booking && ['booking', 'booked', 'unknown'].includes(booking.status);
+    if (!reattempt && bookingActive && input.courier !== 'postex') {
+      throw new AppError('This order has a PostEx booking. Ship it with PostEx, or cancel the PostEx booking first.', 409);
+    }
 
     // The courier provider decides the tracking number (manual: the one the admin typed)
     let tracking = order.fulfillment.trackingNumber;
     if (!reattempt) {
-      const shipment = await courierProvider(input.courier!).registerShipment({ orderNumber: order.orderNumber, trackingNumber: input.trackingNumber });
+      const shipment = await courierProvider(input.courier!).registerShipment({
+        orderNumber: order.orderNumber,
+        trackingNumber: input.trackingNumber,
+        booking,
+      });
       tracking = shipment.trackingNumber;
     } else if (input.trackingNumber) {
       tracking = input.trackingNumber;

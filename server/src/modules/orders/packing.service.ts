@@ -155,6 +155,10 @@ export async function unpackOrder(idOrNumber: string, input: UnpackOrderInput, a
     if (order.status !== 'packing') {
       throw new AppError(`Only orders in "Packing" can be unpacked (this one is "${statusLabel(order.status)}")`, 409);
     }
+        const booking = order.fulfillment.booking;
+    if (booking && ['booking', 'booked', 'unknown'].includes(booking.status)) {
+      throw new AppError('Cancel the PostEx booking first, then undo packing', 409);
+    }
     setStatus(order, 'confirmed', actor, `Packing undone: ${input.reason}`);
 
     let shortfall = false;

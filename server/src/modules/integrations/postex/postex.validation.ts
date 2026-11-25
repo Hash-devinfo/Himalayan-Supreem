@@ -23,6 +23,18 @@ export const integrationLogQuerySchema = z.strictObject({
   ...paginationQuery,
 });
 
+// Cancel a PostEx booking before pickup (20B)
+export const cancelBookingSchema = z.strictObject({
+  reason: z.string().trim().min(3, 'Write a short reason').max(300),
+});
+
+// Load sheet for the rider. No list = every booked parcel still in Packing.
+export const loadSheetSchema = z.strictObject({
+  orders: z.array(z.string().trim().min(1).max(30)).max(100).optional(),
+});
+
+export type CancelBookingInput = z.infer<typeof cancelBookingSchema>;
+export type LoadSheetInput = z.infer<typeof loadSheetSchema>;
 export type PostexSettingsInput = z.infer<typeof postexSettingsSchema>;
 export type MatchCityInput = z.infer<typeof matchCitySchema>;
 export type IntegrationLogQuery = z.infer<typeof integrationLogQuerySchema>;

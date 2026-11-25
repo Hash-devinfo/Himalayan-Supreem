@@ -1,19 +1,20 @@
-import { Schema, model, type HydratedDocument, type Types } from 'mongoose';
+import { Schema, model, type HydratedDocument, type Types } from "mongoose";
 
 // Every call to an outside service such as PostEx (design 23), so failed bookings and
 // syncs can be seen and retried. Short summaries only: never tokens or full customer data.
-export const INTEGRATION_PROVIDERS = ['postex'] as const;
+export const INTEGRATION_PROVIDERS = ["postex"] as const;
 export const INTEGRATION_ACTIONS = [
-  'check_connection',
-  'get_cities',
-  'get_addresses',
-  'book_shipment',
-  'cancel_shipment',
-  'sync_status',
-  'sync_payments',
-  'airway_bill',
-  'load_sheet',
-  'shipper_advice',
+  "check_connection",
+  "get_cities",
+  "get_addresses",
+  "book_shipment",
+  "find_booking",
+  "cancel_shipment",
+  "sync_status",
+  "sync_payments",
+  "airway_bill",
+  "load_sheet",
+  "shipper_advice",
 ] as const;
 
 export type IntegrationProvider = (typeof INTEGRATION_PROVIDERS)[number];
@@ -26,7 +27,7 @@ export interface IIntegrationLog {
   action: IntegrationAction;
   order?: Types.ObjectId;
   orderNumber?: string;
-  status: 'success' | 'failed';
+  status: "success" | "failed";
   httpStatus?: number;
   requestSummary?: string;
   responseSummary?: string;
@@ -43,9 +44,9 @@ const integrationLogSchema = new Schema<IIntegrationLog>(
   {
     provider: { type: String, enum: INTEGRATION_PROVIDERS, required: true },
     action: { type: String, enum: INTEGRATION_ACTIONS, required: true },
-    order: { type: Schema.Types.ObjectId, ref: 'Order' },
+    order: { type: Schema.Types.ObjectId, ref: "Order" },
     orderNumber: { type: String },
-    status: { type: String, enum: ['success', 'failed'], required: true },
+    status: { type: String, enum: ["success", "failed"], required: true },
     httpStatus: { type: Number },
     requestSummary: { type: String, maxlength: 500 },
     responseSummary: { type: String, maxlength: 500 },
@@ -54,13 +55,19 @@ const integrationLogSchema = new Schema<IIntegrationLog>(
     durationMs: { type: Number, default: 0 },
     expiresAt: { type: Date, required: true },
   },
-  { timestamps: { createdAt: true, updatedAt: false }, toJSON: { versionKey: false } }
+  {
+    timestamps: { createdAt: true, updatedAt: false },
+    toJSON: { versionKey: false },
+  },
 );
 
 integrationLogSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 integrationLogSchema.index({ provider: 1, createdAt: -1 });
 integrationLogSchema.index({ order: 1, createdAt: -1 });
 
-const IntegrationLog = model<IIntegrationLog>('IntegrationLog', integrationLogSchema);
+const IntegrationLog = model<IIntegrationLog>(
+  "IntegrationLog",
+  integrationLogSchema,
+);
 
 export default IntegrationLog;
