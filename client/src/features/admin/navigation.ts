@@ -9,6 +9,7 @@ import {
   Settings,
   ShoppingBag,
   Star,
+  TicketPercent,
   Truck,
   Undo2,
   Users,
@@ -39,6 +40,7 @@ export const ADMIN_NAV: AdminNavGroup[] = [
       { label: 'Customers', path: 'customers', icon: Users, description: 'Order history, risk and blocked numbers' },
       { label: 'Refunds', path: 'refunds', icon: Undo2, description: 'Refunds for damaged or incorrect products' },
       { label: 'Reviews', path: 'reviews', icon: Star, description: 'Publish, hide or remove customer reviews' },
+            { label: 'Promotions', path: 'promotions', icon: TicketPercent, description: 'Discount codes and sales' },
     ],
   },
   {

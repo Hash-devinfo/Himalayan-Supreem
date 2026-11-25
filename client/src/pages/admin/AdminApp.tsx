@@ -8,6 +8,10 @@ import AdminLoginPage from "./AdminLoginPage";
 import ComingSoonPage from "./ComingSoonPage";
 import ForgotPasswordPage from "./ForgotPasswordPage";
 import ResetPasswordPage from "./ResetPasswordPage";
+import CategoriesPage from "./categories/CategoriesPage";
+import CustomerDetailPage from "./customers/CustomerDetailPage";
+import CustomersListPage from "./customers/CustomersListPage";
+import DeliveryPage from "./delivery/DeliveryPage";
 import InventoryPage from "./inventory/InventoryPage";
 import SizeStockPage from "./inventory/SizeStockPage";
 import InvoicePage from "./orders/InvoicePage";
@@ -16,22 +20,25 @@ import OrdersListPage from "./orders/OrdersListPage";
 import PackingSlipPage from "./orders/PackingSlipPage";
 import ProductFormPage from "./products/ProductFormPage";
 import ProductsListPage from "./products/ProductsListPage";
-import CategoriesPage from "./categories/CategoriesPage";
-import CustomerDetailPage from "./customers/CustomerDetailPage";
-import CustomersListPage from "./customers/CustomersListPage";
 import RefundDetailPage from "./refunds/RefundDetailPage";
 import RefundsListPage from "./refunds/RefundsListPage";
 import ReviewsPage from "./reviews/ReviewsPage";
+import SettingsPage from "./settings/SettingsPage";
+import PromotionFormPage from "./promotions/PromotionFormPage";
+import PromotionsListPage from "./promotions/PromotionsListPage";
+
 
 // Sections that have their real pages; the rest still show "being built"
 const BUILT_SECTIONS = new Set([
   "orders",
-  "products",
-  "inventory",
-  "categories",
-  "settings",
   "customers",
   "refunds",
+  "reviews",
+  "products",
+  "categories",
+  "inventory",
+  "delivery",
+  "settings",
 ]);
 
 // Paths here are relative to /admin
@@ -46,10 +53,7 @@ export default function AdminApp() {
         <Route element={<RequireAdmin />}>
           {/* Print pages: logged in, but without the sidebar */}
           <Route path="orders/:orderNumber/invoice" element={<InvoicePage />} />
-          <Route
-            path="orders/:orderNumber/packing-slip"
-            element={<PackingSlipPage />}
-          />
+          <Route path="orders/:orderNumber/packing-slip" element={<PackingSlipPage />} />
 
           <Route element={<AdminLayout />}>
             <Route index element={<AdminDashboardPage />} />
@@ -69,24 +73,23 @@ export default function AdminApp() {
             <Route path="products" element={<ProductsListPage />} />
             <Route path="products/new" element={<ProductFormPage />} />
             <Route path="products/:productId" element={<ProductFormPage />} />
+                        {/* Promotions */}
+            <Route path="promotions" element={<PromotionsListPage />} />
+            <Route path="promotions/new" element={<PromotionFormPage />} />
+            <Route path="promotions/:promotionId" element={<PromotionFormPage />} />
             {/* Categories */}
             <Route path="categories" element={<CategoriesPage />} />
             {/* Inventory */}
             <Route path="inventory" element={<InventoryPage />} />
-            <Route
-              path="inventory/:productId/:variantId"
-              element={<SizeStockPage />}
-            />
+            <Route path="inventory/:productId/:variantId" element={<SizeStockPage />} />
+            {/* Delivery */}
+            <Route path="delivery" element={<DeliveryPage />} />
+            {/* Settings */}
+            <Route path="settings" element={<SettingsPage />} />
 
             {/* Sections not built yet. Each one is swapped for its real page as we build it. */}
-            {ADMIN_NAV_ITEMS.filter(
-              (item) => item.path && !BUILT_SECTIONS.has(item.path),
-            ).map((item) => (
-              <Route
-                key={item.path}
-                path={`${item.path}/*`}
-                element={<ComingSoonPage />}
-              />
+            {ADMIN_NAV_ITEMS.filter((item) => item.path && !BUILT_SECTIONS.has(item.path)).map((item) => (
+              <Route key={item.path} path={`${item.path}/*`} element={<ComingSoonPage />} />
             ))}
           </Route>
         </Route>
